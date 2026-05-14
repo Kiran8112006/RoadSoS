@@ -247,6 +247,15 @@ export default function LoginScreen() {
             <TouchableOpacity
                  onPress={() => router.push('/auth/register')}
                 style={{ flexDirection: 'row', alignItems: 'center' }}  >
+              <Text
+                style={{
+                  color: '#E53E3E',
+                  marginLeft: 6,
+                  fontWeight: '600',
+                }}
+              >
+                Register
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
