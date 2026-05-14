@@ -9,14 +9,24 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { loginUser } from '@/src/services/firebase/firebase.auth';
+import { router } from 'expo-router';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleEmailLogin = () => {
-    console.log('Email Login');
-  };
+  const handleEmailLogin = async () => {
+  try {
+    const response = await loginUser(email, password);
+
+    console.log('LOGIN SUCCESS');
+    console.log(response.user);
+
+  } catch (error: any) {
+    console.log(error.message);
+  }
+};
 
   const handleGoogleLogin = () => {
     console.log('Google Login');
@@ -234,16 +244,9 @@ export default function LoginScreen() {
               Don't have an account?
             </Text>
 
-            <TouchableOpacity>
-              <Text
-                style={{
-                  color: '#E53E3E',
-                  marginLeft: 6,
-                  fontWeight: '600',
-                }}
-              >
-                Register
-              </Text>
+            <TouchableOpacity
+                 onPress={() => router.push('/auth/register')}
+                style={{ flexDirection: 'row', alignItems: 'center' }}  >
             </TouchableOpacity>
           </View>
         </ScrollView>
