@@ -8,25 +8,31 @@ import {
 } from 'react-native';
 
 import { registerUser } from '@/src/services/firebase/firebase.auth';
+import { Alert } from 'react-native';
+import { router } from 'expo-router';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    try {
-      const response = await registerUser(
-        email,
-        password
-      );
+  try {
+    await registerUser(email, password);
 
-      console.log('REGISTER SUCCESS');
-      console.log(response.user);
+    Alert.alert(
+      'Success',
+      'Account created successfully'
+    );
 
-    } catch (error: any) {
-      console.log(error.message);
-    }
-  };
+    router.replace('/auth/login');
+
+  } catch (error: any) {
+    Alert.alert(
+      'Registration Failed',
+      error.message
+    );
+  }
+};
 
   return (
     <SafeAreaView

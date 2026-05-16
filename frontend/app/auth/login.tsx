@@ -11,6 +11,17 @@ import {
 } from 'react-native';
 import { loginUser } from '@/src/services/firebase/firebase.auth';
 import { router } from 'expo-router';
+import { Alert } from 'react-native';
+import { useEffect } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { auth } from '@/src/services/firebase/firebase.config';
+
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
+
+
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -18,19 +29,63 @@ export default function LoginScreen() {
 
   const handleEmailLogin = async () => {
   try {
-    const response = await loginUser(email, password);
+    const response = await loginUser(
+      email,
+      password
+    );
 
-    console.log('LOGIN SUCCESS');
-    console.log(response.user);
+    Alert.alert(
+      'Login Success',
+      `Welcome ${response.user.email}`
+    );
 
   } catch (error: any) {
-    console.log(error.message);
+    Alert.alert(
+      'Login Failed',
+      error.message
+    );
   }
 };
 
-  const handleGoogleLogin = () => {
-    console.log('Google Login');
-  };
+useEffect(() => {
+  GoogleSignin.configure({
+    webClientId:
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+}, []);
+
+const handleGoogleLogin = async () => {
+  try {
+    await GoogleSignin.hasPlayServices();
+
+    const userInfo = await GoogleSignin.signIn();
+
+    const idToken = userInfo.data?.idToken;
+
+    if (!idToken) {
+      throw new Error('No ID token found');
+    }
+
+    const googleCredential =
+      GoogleAuthProvider.credential(idToken);
+
+    const userCredential =
+      await signInWithCredential(
+        auth,
+        googleCredential
+      );
+
+    console.log('USER:', userCredential.user);
+
+    Alert.alert(
+      'Success',
+      'Google Login Successful'
+    );
+
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   const handlePhoneLogin = () => {
     console.log('Phone Login');
