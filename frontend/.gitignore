@@ -46,3 +46,4 @@ app-example
 .env
 
 .vscode/
+google-services.json

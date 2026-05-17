@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "575572398500-7a6nperl591p3c1shv6i1mc7s87di9ss.apps.googleusercontent.com",
+          "client_id": "575572398500-c4pl0updvlq3bn8as4lsnkf988g9r80e.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.roadsos.app",
-            "certificate_hash": "731484f7f7d5b948f0f355ecb11c7fd77b73b3f3"
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {

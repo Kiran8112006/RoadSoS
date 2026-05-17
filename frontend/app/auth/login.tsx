@@ -87,9 +87,7 @@ const handleGoogleLogin = async () => {
   }
 };
 
-  const handlePhoneLogin = () => {
-    console.log('Phone Login');
-  };
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0F19' }}>
@@ -263,10 +261,9 @@ const handleGoogleLogin = async () => {
               Continue with Google
             </Text>
           </TouchableOpacity>
-
-          {/* Phone Login */}
+          
           <TouchableOpacity
-            onPress={handlePhoneLogin}
+            onPress={() => router.push('/auth/phone')}
             style={{
               backgroundColor: '#1A202C',
               paddingVertical: 16,
@@ -286,7 +283,7 @@ const handleGoogleLogin = async () => {
               Continue with Phone
             </Text>
           </TouchableOpacity>
-
+          
           {/* Register */}
           <View
             style={{
