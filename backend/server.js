@@ -4,8 +4,17 @@ const { admin, db } = require("./firebaseAdmin");
 
 const app = express();
 
+const profileRoutes =
+  require('./routes/profile.routes');
+
 app.use(cors());
 app.use(express.json());
+
+
+app.use(
+  '/api/profile',
+  profileRoutes
+);
 
 // Middleware to verify Firebase login token
 async function verifyFirebaseToken(req, res, next) {
@@ -172,4 +181,8 @@ app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
 
 const PORT = 5000;
 
-app.listen(PORT);
+app.listen(PORT, () => {
+  console.log(
+    `Server running on port ${PORT}`
+  );
+});

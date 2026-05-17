@@ -15,6 +15,12 @@ import auth from '@react-native-firebase/auth';
 
 import CountryPicker from 'react-native-country-picker-modal';
 
+import { router } from 'expo-router';
+
+import {
+  getUserProfile,
+} from '../../src/services/api/profile.api';
+
 export default function PhoneScreen() {
   const [phoneNumber, setPhoneNumber] =
     useState('');
@@ -91,15 +97,41 @@ export default function PhoneScreen() {
 
       setLoading(true);
 
-      await confirmation.confirm(otp);
+      const userCredential =
+        await confirmation.confirm(otp);
 
-      Alert.alert(
-        'Success',
-        'Phone Login Successful'
-      );
+      const token =
+        await userCredential.user.getIdToken();
 
-    } catch (error) {
+        const response =
+        await getUserProfile(token);
+
+        if (response?.profileCompleted) {
+
+        router.replace('/home');
+
+        } else {
+
+        router.replace(
+            '/auth/complete-profile'
+        );
+
+        }
+
+    } catch (error: any) {
       console.log(error);
+
+      if (
+        error.response?.status === 404
+      ) {
+
+        router.replace(
+          '/auth/complete-profile'
+        );
+
+        return;
+
+      }
 
       Alert.alert(
         'Error',
