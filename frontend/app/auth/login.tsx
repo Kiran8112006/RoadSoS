@@ -21,6 +21,10 @@ import {
   signInWithCredential,
 } from 'firebase/auth';
 
+import {
+  getUserProfile,
+} from '@/src/services/api/profile.api';;
+
 
 
 export default function LoginScreen() {
@@ -28,23 +32,54 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleEmailLogin = async () => {
+
   try {
-    const response = await loginUser(
-      email,
-      password
-    );
+
+    const response =
+      await loginUser(
+        email,
+        password
+      );
 
     Alert.alert(
       'Login Success',
       `Welcome ${response.user.email}`
     );
 
+    const profileResponse =
+      await getUserProfile();
+
+    if (
+      profileResponse
+        ?.profileCompleted
+    ) {
+
+      router.replace('/home');
+
+    } else {
+
+      router.replace(
+        '/auth/complete-profile'
+      );
+
+    }
+
   } catch (error: any) {
-    Alert.alert(
-      'Login Failed',
-      error.message
-    );
+
+    console.log(error);
+
+    if (
+      error.response?.status === 404
+    ) {
+
+      router.replace(
+        '/auth/complete-profile'
+      );
+
+    }
+
   }
+
 };
 
 useEffect(() => {
@@ -81,11 +116,38 @@ const handleGoogleLogin = async () => {
       'Success',
       'Google Login Successful'
     );
+    const response =
+      await getUserProfile();
+      console.log(response);
+      console.log("PROFILE RESPONSE:", response);
 
-  } catch (error) {
+    if (response?.profileCompleted) {
+
+    router.replace('/home');
+
+    } else {
+
+        router.replace('/auth/complete-profile');
+
+    }
+
+  } catch (error: any) {
+
     console.log(error);
-  }
+
+    if (
+        error.response?.status === 404
+      ) {
+
+        router.replace(
+          '/auth/complete-profile'
+      );
+
+    }
+
+}
 };
+
 
 
 
