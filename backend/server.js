@@ -7,9 +7,16 @@ const app = express();
 const profileRoutes =
   require('./routes/profile.routes');
 
+const trackingRoutes =
+    require('./routes/trackingRoutes');
+
 app.use(cors());
 app.use(express.json());
 
+app.use(
+  '/api/tracking',
+  trackingRoutes
+);
 
 app.use(
   '/api/profile',
