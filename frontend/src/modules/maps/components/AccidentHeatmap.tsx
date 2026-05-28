@@ -1,9 +1,10 @@
 import React from 'react';
-import { Circle, MapHeatmap } from 'react-native-maps';
+import { Circle, MapHeatmap, Marker } from 'react-native-maps';
 import { AccidentHotspot } from '../safety/types/safety.types';
 
 interface Props {
   hotspots: AccidentHotspot[];
+  onHotspotPress?: (hotspot: AccidentHotspot) => void;
 }
 
 const getRiskColor = (riskScore: number) => {
@@ -18,7 +19,7 @@ const getStrokeColor = (riskScore: number) => {
   return '#FACC15';
 };
 
-export default function AccidentHeatmap({ hotspots }: Props) {
+export default function AccidentHeatmap({ hotspots, onHotspotPress }: Props) {
   if (hotspots.length === 0) return null;
 
   const points = hotspots.map((hotspot) => ({
@@ -51,6 +52,20 @@ export default function AccidentHeatmap({ hotspots }: Props) {
           fillColor={getRiskColor(hotspot.riskScore)}
           strokeColor={getStrokeColor(hotspot.riskScore)}
           strokeWidth={1}
+        />
+      ))}
+
+      {onHotspotPress && hotspots.map((hotspot, index) => (
+        <Marker
+          key={`tap-${hotspot.latitude}-${hotspot.longitude}-${index}`}
+          coordinate={{
+            latitude: hotspot.latitude,
+            longitude: hotspot.longitude,
+          }}
+          anchor={{ x: 0.5, y: 0.5 }}
+          opacity={0.01}
+          tracksViewChanges={false}
+          onPress={() => onHotspotPress(hotspot)}
         />
       ))}
     </>

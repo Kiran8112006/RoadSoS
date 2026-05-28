@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import {
   View,
@@ -23,7 +23,7 @@ import {
 import { calculateDistance } from '../services/GoogleMapsService';
 import AccidentHeatmap from './AccidentHeatmap';
 import HospitalList from './HospitalList';
-import { useAccidentHotspots } from '../safety';
+import { AccidentHotspot, useAccidentHotspots } from '../safety';
 
 interface LocationCoords {
   latitude: number;
@@ -35,6 +35,63 @@ const TRAVEL_MODE_LABELS: Record<string, string> = {
   walking: 'Walk',
   transit: 'Transit',
   bicycling: 'Bicycle',
+};
+
+const getRiskLabel = (riskScore: number): 'Low' | 'Medium' | 'High' => {
+  if (riskScore >= 0.7) return 'High';
+  if (riskScore >= 0.4) return 'Medium';
+  return 'Low';
+};
+
+const getRiskColor = (riskScore: number) => {
+  if (riskScore >= 0.7) return '#EF4444';
+  if (riskScore >= 0.4) return '#F59E0B';
+  return '#22C55E';
+};
+
+const getHotspotTitle = (hotspot: AccidentHotspot) => {
+  const label = getRiskLabel(hotspot.riskScore);
+  return `${label} risk zone`;
+};
+
+const formatHotspotReason = (description?: string) => {
+  if (!description) {
+    return 'OSM predicted hotspot based on nearby road layout and traffic features.';
+  }
+
+  return description.replace(/^OSM risk prediction:\s*/i, '');
+};
+
+const getCurrentAreaRiskScore = (
+  location: LocationCoords | null,
+  hotspots: AccidentHotspot[]
+) => {
+  if (!location || hotspots.length === 0) return 0;
+
+  const nearby = hotspots
+    .map((hotspot) => ({
+      hotspot,
+      distance: calculateDistance(
+        location.latitude,
+        location.longitude,
+        hotspot.latitude,
+        hotspot.longitude
+      ),
+    }))
+    .filter(({ distance }) => distance <= 2);
+
+  if (nearby.length === 0) return 0;
+
+  const weightedRisk = nearby.reduce((total, { hotspot, distance }) => {
+    const weight = Math.max(0.2, 1 - distance / 2);
+    return total + hotspot.riskScore * weight;
+  }, 0);
+
+  const totalWeight = nearby.reduce((total, { distance }) => {
+    return total + Math.max(0.2, 1 - distance / 2);
+  }, 0);
+
+  return totalWeight > 0 ? Math.min(1, weightedRisk / totalWeight) : 0;
 };
 
 const RoadSoSMap: React.FC = () => {
@@ -49,6 +106,7 @@ const RoadSoSMap: React.FC = () => {
   const [selectedTravelMode, setSelectedTravelMode] = useState<string>('driving');
   const [nearestHospitalInfo, setNearestHospitalInfo] = useState<TravelMode | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
+  const [selectedHotspot, setSelectedHotspot] = useState<AccidentHotspot | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [activeFilter, setActiveFilter] = useState<'hospital' | 'police'>('hospital');
   const [loading, setLoading] = useState(true);
@@ -57,7 +115,7 @@ const RoadSoSMap: React.FC = () => {
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
-  const snapPoints = ['45%', '85%'];
+  const snapPoints = ['12%', '45%', '85%'];
 
   useEffect(() => {
     getCurrentLocation();
@@ -184,6 +242,7 @@ const RoadSoSMap: React.FC = () => {
   };
 
   const handleMarkerPress = async (place: Place) => {
+    setSelectedHotspot(null);
     setSelectedPlace(place);
     setTravelModes([]);
     bottomSheetRef.current?.expand();
@@ -207,8 +266,15 @@ const RoadSoSMap: React.FC = () => {
       longitude: selectedPlace.longitude,
     });
     setShowRoute(true);
-    bottomSheetRef.current?.close();
+    bottomSheetRef.current?.snapToIndex(0);
     setViewMode('map');
+  };
+
+  const handleHotspotPress = (hotspot: AccidentHotspot) => {
+    setSelectedPlace(null);
+    setTravelModes([]);
+    setSelectedHotspot(hotspot);
+    bottomSheetRef.current?.expand();
   };
 
   const handleSOS = () => {
@@ -258,11 +324,6 @@ const RoadSoSMap: React.FC = () => {
     });
   };
 
-  const handleSheetClose = useCallback(() => {
-    setSelectedPlace(null);
-    setTravelModes([]);
-  }, []);
-
   const handleSelectPlaceFromList = async (place: Place) => {
     setViewMode('map');
     await handleMarkerPress(place);
@@ -271,6 +332,8 @@ const RoadSoSMap: React.FC = () => {
   const visibleHotspots = currentLocation
     ? getHotspotsInRadius(currentLocation.latitude, currentLocation.longitude, 40)
     : [];
+  const currentAreaRiskScore = getCurrentAreaRiskScore(currentLocation, visibleHotspots);
+  const currentAreaRiskLabel = getRiskLabel(currentAreaRiskScore);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -299,6 +362,7 @@ const RoadSoSMap: React.FC = () => {
             {currentLocation && showHeatmap && (
               <AccidentHeatmap
                 hotspots={visibleHotspots}
+                onHotspotPress={handleHotspotPress}
               />
             )}
 
@@ -369,7 +433,11 @@ const RoadSoSMap: React.FC = () => {
               </TouchableOpacity>
 
               {nearestHospital && nearestHospitalInfo && (
-                <View style={styles.nearestInfo}>
+                <TouchableOpacity
+                  style={styles.nearestInfo}
+                  activeOpacity={0.78}
+                  onPress={() => handleMarkerPress(nearestHospital)}
+                >
                   <Text style={styles.nearestLabel}>NEAREST HOSPITAL</Text>
                   <Text style={styles.nearestName} numberOfLines={1}>
                     {nearestHospital.name}
@@ -377,8 +445,15 @@ const RoadSoSMap: React.FC = () => {
                   <Text style={styles.nearestDetails}>
                     {nearestHospitalInfo.distance}  •  {nearestHospitalInfo.duration} by car
                   </Text>
-                </View>
+                </TouchableOpacity>
               )}
+
+              <View style={styles.topRiskInfo}>
+                <Text style={styles.topRiskLabel}>CURRENT AREA RISK</Text>
+                <Text style={[styles.topRiskValue, { color: getRiskColor(currentAreaRiskScore) }]}>
+                  {currentAreaRiskLabel}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.topBarActions}>
@@ -422,18 +497,45 @@ const RoadSoSMap: React.FC = () => {
           </TouchableOpacity>
 
           {/* Bottom Sheet */}
-          {selectedPlace && (
+          {(selectedPlace || selectedHotspot) && (
           <BottomSheet
             ref={bottomSheetRef}
-            index={-1}
+            index={1}
             snapPoints={snapPoints}
-            enablePanDownToClose={true}
-            onClose={handleSheetClose}
+            enablePanDownToClose={false}
             backgroundStyle={styles.bottomSheetBackground}
             handleIndicatorStyle={styles.handleIndicator}
             android_keyboardInputMode="adjustResize"
           >
             <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+              {selectedHotspot && (
+                <>
+                  <Text style={styles.sheetPlaceName}>{getHotspotTitle(selectedHotspot)}</Text>
+
+                  <View style={styles.sheetMetaRow}>
+                    <Text style={[
+                      styles.sheetRiskBadge,
+                      { color: getRiskColor(selectedHotspot.riskScore) }
+                    ]}>
+                      Risk score {Math.round(selectedHotspot.riskScore * 100)}%
+                    </Text>
+                    {selectedHotspot.source === 'osm_prediction' && (
+                      <Text style={styles.sheetPlaceType}>OSM predicted hotspot</Text>
+                    )}
+                  </View>
+
+                  <View style={styles.sheetSection}>
+                    <Text style={styles.sheetSectionTitle}>Why this area is risky</Text>
+                    <Text style={styles.sheetAddress}>
+                      {formatHotspotReason(selectedHotspot.description)}
+                    </Text>
+                    <Text style={styles.sheetAddress}>
+                      Examples include road class, intersections, lane count, signals, speed, or surface data found in OpenStreetMap.
+                    </Text>
+                  </View>
+                </>
+              )}
+
               {selectedPlace && (
                 <>
                   <Text style={styles.sheetPlaceName}>{selectedPlace.name}</Text>
@@ -569,7 +671,6 @@ const styles = StyleSheet.create({
   },
   nearestInfo: {
     flex: 1,
-    marginBottom: 10,
   },
   nearestLabel: {
     color: '#EF4444',
@@ -587,6 +688,23 @@ const styles = StyleSheet.create({
   nearestDetails: {
     color: '#718096',
     fontSize: 12,
+  },
+  topRiskInfo: {
+    minWidth: 86,
+    alignItems: 'flex-end',
+    paddingLeft: 8,
+  },
+  topRiskLabel: {
+    color: '#A0AEC0',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+    textAlign: 'right',
+  },
+  topRiskValue: {
+    fontSize: 18,
+    fontWeight: '900',
   },
   topBarActions: {
     flexDirection: 'row',
@@ -678,6 +796,10 @@ const styles = StyleSheet.create({
   sheetPlaceType: {
     color: '#718096',
     fontSize: 13,
+  },
+  sheetRiskBadge: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   sheetRating: {
     color: '#F6C90E',
