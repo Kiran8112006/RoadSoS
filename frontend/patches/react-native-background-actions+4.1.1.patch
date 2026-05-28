@@ -1,0 +1,37 @@
+diff --git a/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java b/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
+index 1234567..abcdefg 100644
+--- a/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
++++ b/node_modules/react-native-background-actions/android/src/main/java/com/asterinet/react/bgactions/RNBackgroundActionsTask.java
+@@ -1,6 +1,8 @@
+ package com.asterinet.react.bgactions;
+ 
++import android.app.Service;
+ import android.content.Intent;
++import android.os.Build;
+ import android.os.IBinder;
+ 
+ import androidx.core.app.ServiceCompat;
+@@ -88,9 +90,24 @@ public class RNBackgroundActionsTask extends Service {
+         Log.d(TAG, "onStartCommand: " + action);
+         notification = NotificationHelper.getInstance()
+                 .notifyNotificationHelper(getApplicationContext(), options);
+-        startForeground(NOTIFICATION_ID, notification);
++        
++        // Set proper foreground service types for Android 12+
++        int foregroundServiceType = Service.FOREGROUND_SERVICE_TYPE_LOCATION;
++        if (options.hasKey("includesMicrophone") && options.getBoolean("includesMicrophone")) {
++            foregroundServiceType |= Service.FOREGROUND_SERVICE_TYPE_MICROPHONE;
++        }
++        
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
++            // Android 14+ requires specifying foregroundServiceType
++            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, foregroundServiceType);
++        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
++            // Android 12-13 requires foregroundServiceType but use startForeground for compatibility
++            startForeground(NOTIFICATION_ID, notification);
++        } else {
++            // Android 11 and below
++            startForeground(NOTIFICATION_ID, notification);
++        }
+ 
+         return START_STICKY;
