@@ -355,7 +355,7 @@ const handleGoogleLogin = async () => {
             }}
           >
             <Text style={{ color: '#A0AEC0' }}>
-              Don't have an account?
+              Don&apos;t have an account?
             </Text>
 
             <TouchableOpacity

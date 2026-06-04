@@ -10,6 +10,11 @@ const profileRoutes =
 const trackingRoutes =
     require('./routes/trackingRoutes');
 
+const emergencyRoutes =
+require(
+  './routes/emergencyRoutes'
+);
+
 app.use(cors());
 app.use(express.json());
 
@@ -21,6 +26,11 @@ app.use(
 app.use(
   '/api/profile',
   profileRoutes
+);
+
+app.use(
+  '/api/emergency',
+  emergencyRoutes
 );
 
 // Middleware to verify Firebase login token

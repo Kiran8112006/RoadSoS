@@ -5,8 +5,15 @@ import {
 } from 'react-native';
 
 import {
+  Href,
   router,
 } from 'expo-router';
+
+const mapsRoute =
+  '/maps' as Href;
+
+const theftRoute =
+  '/theft' as Href;
 
 export default function Navbar() {
 
@@ -52,7 +59,7 @@ export default function Navbar() {
 
       <TouchableOpacity
         onPress={() =>
-          router.push('/maps')
+          router.push(mapsRoute)
         }
       >
         <Text
@@ -66,7 +73,7 @@ export default function Navbar() {
 
       <TouchableOpacity
         onPress={() =>
-          router.push('/theft')
+          router.push(theftRoute)
         }
       >
         <Text

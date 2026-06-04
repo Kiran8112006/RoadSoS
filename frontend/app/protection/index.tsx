@@ -1,6 +1,7 @@
 import {
-  View,
   Text,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 
 import {
@@ -17,6 +18,27 @@ from '../../src/components/safety/VehicleSelector';
 import SensorDebug
 from '../../src/components/safety/SensorDebug';
 
+import GpsDebug
+from '../../src/components/safety/GpsDebug';
+
+import RiskDebug
+from '../../src/components/safety/RiskDebug';
+
+import DecelerationDebug
+from '../../src/components/safety/DecelerationDebug';
+
+import EventDebug
+from '../../src/components/safety/EventDebug';
+
+import InactivityDebug
+from '../../src/components/safety/InactivityDebug';
+
+import CrashConfirmedDebug
+from '../../src/components/safety/CrashConfirmedDebug';
+
+import Navbar
+from '../../src/components/ui/Navbar';
+
 import {
   useRideStore,
 } from '../../src/store/ride.store';
@@ -25,9 +47,6 @@ import {
   startSensors,
   stopSensors,
 } from '../../src/services/sensor.service';
-
-import GpsDebug
-from '../../src/components/safety/GpsDebug';
 
 import {
   startLocationTracking,
@@ -38,17 +57,39 @@ import {
   calculateCrashRisk,
 } from '../../src/services/crashDetection.service';
 
-import RiskDebug
-from '../../src/components/safety/RiskDebug';
+import {
+  calculateDeceleration,
+} from '../../src/services/deceleration.service';
 
-import Navbar
-from '../../src/components/ui/Navbar';
+import {
+  detectInactivity,
+} from '@/src/services/inactivity.service';
+
+import {
+  confirmCrash,
+} from '@/src/services/crashConfirmation.service';
+
+import {
+
+  createSuspiciousEvent,
+
+  getSuspiciousEvent,
+
+} from '../../src/services/eventMemory.service';
+
+import {
+  router,
+} from 'expo-router';
 
 export default function ProtectionScreen() {
 
   const {
     isProtectionActive,
   } = useRideStore();
+
+  /*
+    SENSOR STATES
+  */
 
   const [accel, setAccel] =
     useState<any>(null);
@@ -59,15 +100,44 @@ export default function ProtectionScreen() {
   const [location, setLocation] =
     useState<any>(null);
 
-  const [riskScore, setRiskScore] =
+  /*
+    DETECTION STATES
+  */
+
+  const [riskScore,
+  setRiskScore] =
     useState(0);
+
+  const [deceleration,
+  setDeceleration] =
+    useState(0);
+
+  const [event,
+  setEvent] =
+    useState<any>(null);
+
+  const [isInactive,
+  setIsInactive] =
+    useState(false);
+
+  const [isCrashConfirmed,
+  setIsCrashConfirmed] =
+    useState(false);
+
+  /*
+    START SERVICES
+  */
 
   useEffect(() => {
 
     startSensors(
+
       setAccel,
+
       setGyro
+
     );
+
     startLocationTracking(
       setLocation
     );
@@ -75,52 +145,162 @@ export default function ProtectionScreen() {
     return () => {
 
       stopSensors();
+
       stopLocationTracking();
 
     };
 
   }, []);
+
+  /*
+    MAIN DETECTION ENGINE
+  */
+
   useEffect(() => {
 
-  const speed =
-    (
-      location?.coords?.speed || 0
-    ) * 3.6;
+    const speed =
+      (
+        location?.coords?.speed || 0
+      ) * 3.6;
 
-  const risk =
-    calculateCrashRisk(
+    /*
+      CRASH RISK
+    */
 
-      speed,
+    const risk =
+      calculateCrashRisk(
 
-      accel,
+        speed,
 
-      gyro
+        accel,
 
-    );
+        gyro
 
-      setRiskScore(
-        risk
       );
 
-    }, [
+    const decel =
+      calculateDeceleration(
+        speed
+      );
 
-      accel,
+    setRiskScore(
+      risk
+    );
 
-      gyro,
+    setDeceleration(
+      decel
+    );
 
-      location
+    /*
+      CREATE EVENT
+    */
 
-    ]);
+    if (risk > 20) {
+
+      createSuspiciousEvent({
+
+        risk,
+
+        decel,
+
+        speed,
+
+      });
+
+    }
+
+    const currentEvent =
+      getSuspiciousEvent();
+
+    setEvent(
+      currentEvent
+    );
+
+    /*
+      INACTIVITY
+    */
+
+    const inactive =
+      detectInactivity(
+
+        accel,
+
+        gyro,
+
+        speed
+
+      );
+
+    setIsInactive(
+      inactive
+    );
+
+    /*
+      CRASH CONFIRMATION
+    */
+
+    const crash =
+      confirmCrash(
+
+        risk,
+
+        decel,
+
+        !!currentEvent,
+
+        inactive
+
+      );
+
+    setIsCrashConfirmed(
+      crash
+    );
+
+    console.log({
+
+      risk,
+
+      decel,
+
+      event: !!currentEvent,
+
+      inactive,
+
+      crash,
+
+    });
+
+  }, [
+
+    accel,
+
+    gyro,
+
+    location
+
+  ]);
+
+  useEffect(() => {
+
+  if (isCrashConfirmed) {
+
+    router.push('/emergency' as any);
+
+  }
+
+}, [
+
+  isCrashConfirmed
+
+]);
 
   return (
 
-    <View
-      style={{
-        flex: 1,
-
+    <ScrollView
+      contentContainerStyle={{
         padding: 24,
 
-        justifyContent: 'center',
+        paddingBottom: 140,
 
         backgroundColor: 'white',
       }}
@@ -160,6 +340,42 @@ export default function ProtectionScreen() {
 
       <ProtectionButton />
 
+      <TouchableOpacity
+        onPress={() => {
+
+          createSuspiciousEvent({
+            risk: 100,
+            decel: 100,
+            speed: 80,
+          });
+
+          setEvent(
+            getSuspiciousEvent()
+          );
+
+          setIsInactive(true);
+
+        }}
+        style={{
+          backgroundColor: 'red',
+          padding: 15,
+          borderRadius: 10,
+          marginTop: 20,
+        }}
+      >
+
+        <Text
+          style={{
+            color: 'white',
+            fontWeight: 'bold',
+            textAlign: 'center',
+          }}
+        >
+          TEST CRASH
+        </Text>
+
+      </TouchableOpacity>
+
       <SensorDebug
         accel={accel}
         gyro={gyro}
@@ -173,7 +389,32 @@ export default function ProtectionScreen() {
         risk={riskScore}
       />
 
-    </View>
+      <DecelerationDebug
+        deceleration={
+          deceleration
+        }
+      />
+
+      <EventDebug
+        event={event}
+      />
+
+      <InactivityDebug
+        inactive={
+          isInactive
+        }
+      />
+
+      <CrashConfirmedDebug
+        confirmed={
+          isCrashConfirmed
+        }
+      />
+
+      <Navbar />
+
+    </ScrollView>
 
   );
+
 }

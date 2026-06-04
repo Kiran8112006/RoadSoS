@@ -47,32 +47,38 @@ export const calculateCrashRisk = (
   }
 
   /*
-    ACCELEROMETER FACTOR
+    ACCELEROMETER
   */
 
-  if (accelForce > 1.5) {
+  if (accelForce > 3) {
+
+    risk += 20;
+
+  }
+
+  if (accelForce > 5) {
 
     risk += 30;
 
   }
 
-  if (accelForce > 30) {
+  if (accelForce > 8) {
 
     risk += 40;
 
   }
 
   /*
-    GYROSCOPE FACTOR
+    GYROSCOPE
   */
 
-  if (gyroForce > 0.5) {
+  if (gyroForce > 2) {
 
     risk += 20;
 
   }
 
-  if (gyroForce > 1.5) {
+  if (gyroForce > 4) {
 
     risk += 30;
 

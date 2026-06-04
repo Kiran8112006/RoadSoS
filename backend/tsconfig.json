@@ -40,5 +40,14 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
   }
+,
+  "include": [
+    "server.js",
+    "firebaseAdmin.js",
+    "routes/**/*.js"
+  ]
 }
