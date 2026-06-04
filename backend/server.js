@@ -1,11 +1,60 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
 const { admin, db } = require("./firebaseAdmin");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
 
 const profileRoutes =
   require('./routes/profile.routes');
+
+const userLocations = new Map();
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+function notifyNearbyUsers(report, radiusMeters = 5000) {
+  const reportLat = report.location.latitude;
+  const reportLon = report.location.longitude;
+
+  userLocations.forEach((userLocation, socketId) => {
+    const distance = calculateDistance(
+      reportLat,
+      reportLon,
+      userLocation.latitude,
+      userLocation.longitude
+    );
+
+    if (distance <= radiusMeters) {
+      io.to(socketId).emit('report:nearby', {
+        ...report,
+        distanceMeters: Math.round(distance),
+      });
+    }
+  });
+}
+
+const reportRoutes =
+  require('./routes/report.routes');
 
 app.use(cors());
 app.use(express.json());
@@ -15,6 +64,28 @@ app.use(
   '/api/profile',
   profileRoutes
 );
+
+app.use(
+  '/api/reports',
+  reportRoutes(io, notifyNearbyUsers)
+);
+
+io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+
+  socket.on('user:location', (location) => {
+    if (location?.latitude && location?.longitude) {
+      userLocations.set(socket.id, location);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+    userLocations.delete(socket.id);
+  });
+});
+
+
 
 // Middleware to verify Firebase login token
 async function verifyFirebaseToken(req, res, next) {
@@ -181,7 +252,7 @@ app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
 
 const PORT = 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(
     `Server running on port ${PORT}`
   );

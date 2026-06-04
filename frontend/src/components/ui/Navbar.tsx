@@ -66,6 +66,20 @@ export default function Navbar() {
 
       <TouchableOpacity
         onPress={() =>
+          router.push('/reports' as any)
+        }
+      >
+        <Text
+          style={{
+            fontWeight: 'bold',
+          }}
+        >
+          Report
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() =>
           router.push('/theft')
         }
       >
