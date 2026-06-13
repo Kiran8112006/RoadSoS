@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Modal,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
@@ -24,104 +23,59 @@ import {
 import {
   getUserProfile,
 } from '@/src/services/api/profile.api';
-import {
-  getSavedUserSecretPhrase,
-  saveUserSecretPhrase,
-} from '@/src/services/secretPhraseService';
 
 
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [secretPhrase, setSecretPhrase] = useState('');
-  const [pendingRoute, setPendingRoute] = useState('');
-  const [showSecretPhraseModal, setShowSecretPhraseModal] = useState(false);
-  const [savingSecretPhrase, setSavingSecretPhrase] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
 
-  const askForSecretPhrase = async (route: string) => {
-    const savedPhrase = await getSavedUserSecretPhrase();
-    if (savedPhrase) {
-      router.replace(route as any);
-      return;
-    }
-
-    setSecretPhrase('');
-    setPendingRoute(route);
-    setShowSecretPhraseModal(true);
-  };
-
-  const saveSecretPhraseAndContinue = async () => {
-    const trimmedPhrase = secretPhrase.trim();
-    if (!trimmedPhrase) {
-      Alert.alert(
-        'Secret phrase required',
-        'Please enter a phrase you can say during an emergency.'
-      );
-      return;
-    }
-
+  const continueAfterLogin = async () => {
     try {
-      setSavingSecretPhrase(true);
-      await saveUserSecretPhrase(trimmedPhrase);
-      setShowSecretPhraseModal(false);
-      router.replace((pendingRoute || '/home') as any);
-    } catch (error: any) {
-      Alert.alert(
-        'Could not save phrase',
-        error?.message || 'Please try again.'
+      const profileResponse = await getUserProfile();
+
+      router.replace(
+        profileResponse?.profileCompleted
+          ? '/home'
+          : '/auth/complete-profile',
       );
-    } finally {
-      setSavingSecretPhrase(false);
+    } catch (error: any) {
+      console.log('Profile lookup failed after login:', error);
+
+      if (error.response?.status === 404) {
+        router.replace('/auth/complete-profile');
+        return;
+      }
+
+      // Authentication succeeded, so a temporary profile API failure
+      // should not leave the user trapped on the login screen.
+      router.replace('/home');
     }
   };
 
   const handleEmailLogin = async () => {
+    try {
+      setLoggingIn(true);
 
-  try {
+      const response = await loginUser(email, password);
 
-    const response =
-      await loginUser(
-        email,
-        password
+      Alert.alert(
+        'Login Success',
+        `Welcome ${response.user.email}`
       );
 
-    Alert.alert(
-      'Login Success',
-      `Welcome ${response.user.email}`
-    );
-
-    const profileResponse =
-      await getUserProfile();
-
-    if (
-      profileResponse
-        ?.profileCompleted
-    ) {
-
-      await askForSecretPhrase('/home');
-
-    } else {
-
-      await askForSecretPhrase('/auth/complete-profile');
-
+      await continueAfterLogin();
+    } catch (error: any) {
+      console.log('Email login failed:', error);
+      Alert.alert(
+        'Login failed',
+        error?.message || 'Please check your email and password.'
+      );
+    } finally {
+      setLoggingIn(false);
     }
-
-  } catch (error: any) {
-
-    console.log(error);
-
-    if (
-      error.response?.status === 404
-    ) {
-
-      await askForSecretPhrase('/auth/complete-profile');
-
-    }
-
-  }
-
-};
+  };
 
 useEffect(() => {
   GoogleSignin.configure({
@@ -157,32 +111,15 @@ const handleGoogleLogin = async () => {
       'Success',
       'Google Login Successful'
     );
-    const response =
-      await getUserProfile();
-      console.log(response);
-      console.log("PROFILE RESPONSE:", response);
-
-    if (response?.profileCompleted) {
-
-    await askForSecretPhrase('/home');
-
-    } else {
-
-        await askForSecretPhrase('/auth/complete-profile');
-
-    }
+    await continueAfterLogin();
 
   } catch (error: any) {
 
-    console.log(error);
-
-    if (
-        error.response?.status === 404
-      ) {
-
-        await askForSecretPhrase('/auth/complete-profile');
-
-    }
+    console.log('Google login failed:', error);
+    Alert.alert(
+      'Google login failed',
+      error?.message || 'Please try again.'
+    );
 
 }
 };
@@ -192,87 +129,6 @@ const handleGoogleLogin = async () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0F19' }}>
-      <Modal
-        visible={showSecretPhraseModal}
-        transparent
-        animationType="fade"
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            justifyContent: 'center',
-            padding: 24,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: '#111827',
-              borderRadius: 16,
-              padding: 22,
-            }}
-          >
-            <Text
-              style={{
-                color: '#ffffff',
-                fontSize: 22,
-                fontWeight: '700',
-                marginBottom: 10,
-              }}
-            >
-              Set Secret Phrase
-            </Text>
-
-            <Text
-              style={{
-                color: '#A0AEC0',
-                lineHeight: 22,
-                marginBottom: 18,
-              }}
-            >
-              This phrase will trigger emergency detection when protection is active.
-            </Text>
-
-            <TextInput
-              value={secretPhrase}
-              onChangeText={setSecretPhrase}
-              placeholder="Example: blue mango"
-              placeholderTextColor="#718096"
-              autoCapitalize="none"
-              style={{
-                backgroundColor: '#1A202C',
-                color: '#ffffff',
-                padding: 16,
-                borderRadius: 14,
-                fontSize: 16,
-                marginBottom: 18,
-              }}
-            />
-
-            <TouchableOpacity
-              onPress={saveSecretPhraseAndContinue}
-              disabled={savingSecretPhrase}
-              style={{
-                backgroundColor: '#E53E3E',
-                paddingVertical: 16,
-                borderRadius: 14,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  color: '#ffffff',
-                  fontSize: 16,
-                  fontWeight: '700',
-                }}
-              >
-                {savingSecretPhrase ? 'Saving...' : 'Continue'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -369,6 +225,7 @@ const handleGoogleLogin = async () => {
           {/* Login Button */}
           <TouchableOpacity
             onPress={handleEmailLogin}
+            disabled={loggingIn}
             style={{
               backgroundColor: '#E53E3E',
               paddingVertical: 16,
@@ -384,7 +241,7 @@ const handleGoogleLogin = async () => {
                 fontWeight: '600',
               }}
             >
-              Login
+              {loggingIn ? 'Logging in...' : 'Login'}
             </Text>
           </TouchableOpacity>
 
