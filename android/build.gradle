@@ -1,0 +1,47 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle')
+    classpath('com.facebook.react:react-native-gradle-plugin')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
+}
+
+def addSharedCxxRuntimeLinkFlag = { subproject ->
+    subproject.android {
+      defaultConfig {
+        externalNativeBuild {
+          cmake {
+            arguments "-DANDROID_STL=c++_shared",
+                    "-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared"
+          }
+        }
+      }
+    }
+}
+
+subprojects { subproject ->
+  subproject.plugins.withId("com.android.application") {
+    addSharedCxxRuntimeLinkFlag(subproject)
+  }
+
+  subproject.plugins.withId("com.android.library") {
+    addSharedCxxRuntimeLinkFlag(subproject)
+  }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"

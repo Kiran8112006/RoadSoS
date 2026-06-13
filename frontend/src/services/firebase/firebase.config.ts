@@ -20,4 +20,5 @@ export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
 
+export { app };
 export default app;

@@ -1,26 +1,14 @@
+import nativeAuth from '@react-native-firebase/auth';
+import { signOut } from 'firebase/auth';
+import { router } from 'expo-router';
 import {
-  View,
   Text,
   TouchableOpacity,
+  View,
 } from 'react-native';
 
-import {
-  signOut,
-} from 'firebase/auth';
-
-import nativeAuth
-from '@react-native-firebase/auth';
-
-import {
-  auth,
-} from '../src/services/firebase/firebase.config';
-
-import {
-  router,
-} from 'expo-router';
-
-import Navbar
-from '../src/components/ui/Navbar';
+import Navbar from '../src/components/ui/Navbar';
+import { auth } from '../src/services/firebase/firebase.config';
 
 import { useEffect, useCallback } from 'react';
 import { requestNotificationPermissions, showAccidentNotification } from '../src/services/notifications/NotificationService';
@@ -30,20 +18,14 @@ import { useReportSocket } from '../src/modules/reports/hooks/useReportSocket';
 import { AccidentReport } from '../src/modules/reports/types/reports.types';
 
 export default function Home() {
+  const handleLogout = async () => {
+    await Promise.allSettled([
+      signOut(auth),
+      nativeAuth().signOut(),
+    ]);
 
-  const handleLogout =
-    async () => {
-
-      await Promise.allSettled([
-        signOut(auth),
-        nativeAuth().signOut(),
-      ]);
-
-      router.replace(
-        '/auth/login'
-      );
-
-    };
+    router.replace('/auth/login');
+  };
 
   useEffect(() => {
     requestNotificationPermissions();
@@ -66,76 +48,75 @@ export default function Home() {
   useReportSocket(handleNearbyReport);
 
   return (
-
     <View
       style={{
         flex: 1,
-
-        justifyContent: 'center',
-
-        alignItems: 'center',
-
-        backgroundColor: 'white',
-
-        padding: 24,
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 24,
+        paddingTop: 68,
+        paddingBottom: 120,
       }}
     >
-
       <Text
         style={{
+          color: '#0F172A',
           fontSize: 34,
-
-          fontWeight: 'bold',
+          fontWeight: '800',
         }}
       >
-        RoadSoS
+        RoadSOS
       </Text>
 
       <Text
         style={{
-          marginTop: 10,
-
+          color: '#64748B',
           fontSize: 16,
-
-          color: 'gray',
+          marginTop: 8,
         }}
       >
-        RoadSoS
+        Home
       </Text>
 
-      <TouchableOpacity
-        onPress={handleLogout}
+      <View
         style={{
-          marginTop: 30,
-
-          backgroundColor: '#ff3b30',
-
-          paddingVertical: 14,
-
-          paddingHorizontal: 30,
-
-          borderRadius: 14,
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-
         <Text
           style={{
-            color: 'white',
-
-            fontWeight: 'bold',
-
-            fontSize: 16,
+            color: '#475569',
+            fontSize: 18,
+            textAlign: 'center',
           }}
         >
-          Logout
+          Select Safety to start protection.
         </Text>
 
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleLogout}
+          style={{
+            marginTop: 36,
+            backgroundColor: '#111827',
+            paddingVertical: 14,
+            paddingHorizontal: 30,
+            borderRadius: 14,
+          }}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 16,
+              fontWeight: '700',
+            }}
+          >
+            Logout
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <Navbar />
-
     </View>
-
   );
-
 }

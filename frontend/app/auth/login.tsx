@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -11,8 +12,6 @@ import {
 } from 'react-native';
 import { loginUser } from '@/src/services/firebase/firebase.auth';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
-import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '@/src/services/firebase/firebase.config';
 
@@ -23,64 +22,60 @@ import {
 
 import {
   getUserProfile,
-} from '@/src/services/api/profile.api';;
+} from '@/src/services/api/profile.api';
 
 
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  const continueAfterLogin = async () => {
+    try {
+      const profileResponse = await getUserProfile();
+
+      router.replace(
+        profileResponse?.profileCompleted
+          ? '/home'
+          : '/auth/complete-profile',
+      );
+    } catch (error: any) {
+      console.log('Profile lookup failed after login:', error);
+
+      if (error.response?.status === 404) {
+        router.replace('/auth/complete-profile');
+        return;
+      }
+
+      // Authentication succeeded, so a temporary profile API failure
+      // should not leave the user trapped on the login screen.
+      router.replace('/home');
+    }
+  };
 
   const handleEmailLogin = async () => {
+    try {
+      setLoggingIn(true);
 
-  try {
+      const response = await loginUser(email, password);
 
-    const response =
-      await loginUser(
-        email,
-        password
+      Alert.alert(
+        'Login Success',
+        `Welcome ${response.user.email}`
       );
 
-    Alert.alert(
-      'Login Success',
-      `Welcome ${response.user.email}`
-    );
-
-    const profileResponse =
-      await getUserProfile();
-
-    if (
-      profileResponse
-        ?.profileCompleted
-    ) {
-
-      router.replace('/home');
-
-    } else {
-
-      router.replace(
-        '/auth/complete-profile'
+      await continueAfterLogin();
+    } catch (error: any) {
+      console.log('Email login failed:', error);
+      Alert.alert(
+        'Login failed',
+        error?.message || 'Please check your email and password.'
       );
-
+    } finally {
+      setLoggingIn(false);
     }
-
-  } catch (error: any) {
-
-    console.log(error);
-
-    if (
-      error.response?.status === 404
-    ) {
-
-      router.replace(
-        '/auth/complete-profile'
-      );
-
-    }
-
-  }
-
-};
+  };
 
 useEffect(() => {
   GoogleSignin.configure({
@@ -116,34 +111,15 @@ const handleGoogleLogin = async () => {
       'Success',
       'Google Login Successful'
     );
-    const response =
-      await getUserProfile();
-      console.log(response);
-      console.log("PROFILE RESPONSE:", response);
-
-    if (response?.profileCompleted) {
-
-    router.replace('/home');
-
-    } else {
-
-        router.replace('/auth/complete-profile');
-
-    }
+    await continueAfterLogin();
 
   } catch (error: any) {
 
-    console.log(error);
-
-    if (
-        error.response?.status === 404
-      ) {
-
-        router.replace(
-          '/auth/complete-profile'
-      );
-
-    }
+    console.log('Google login failed:', error);
+    Alert.alert(
+      'Google login failed',
+      error?.message || 'Please try again.'
+    );
 
 }
 };
@@ -249,6 +225,7 @@ const handleGoogleLogin = async () => {
           {/* Login Button */}
           <TouchableOpacity
             onPress={handleEmailLogin}
+            disabled={loggingIn}
             style={{
               backgroundColor: '#E53E3E',
               paddingVertical: 16,
@@ -264,7 +241,7 @@ const handleGoogleLogin = async () => {
                 fontWeight: '600',
               }}
             >
-              Login
+              {loggingIn ? 'Logging in...' : 'Login'}
             </Text>
           </TouchableOpacity>
 
@@ -355,7 +332,7 @@ const handleGoogleLogin = async () => {
             }}
           >
             <Text style={{ color: '#A0AEC0' }}>
-              Don't have an account?
+              {"Don't have an account?"}
             </Text>
 
             <TouchableOpacity
