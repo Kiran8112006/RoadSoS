@@ -10,6 +10,13 @@ import {
 import Navbar from '../src/components/ui/Navbar';
 import { auth } from '../src/services/firebase/firebase.config';
 
+import { useEffect, useCallback } from 'react';
+import { requestNotificationPermissions, showAccidentNotification } from '../src/services/notifications/NotificationService';
+import { useLocationBroadcast } from '../hooks/useLocationBroadcast';
+import { updateUserLocation } from '../src/modules/reports/services/ReportsRealtimeService';
+import { useReportSocket } from '../src/modules/reports/hooks/useReportSocket';
+import { AccidentReport } from '../src/modules/reports/types/reports.types';
+
 export default function Home() {
   const handleLogout = async () => {
     await Promise.allSettled([
@@ -19,6 +26,26 @@ export default function Home() {
 
     router.replace('/auth/login');
   };
+
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
+  const handleLocationUpdate = useCallback((location: { latitude: number; longitude: number }) => {
+    updateUserLocation(location);
+  }, []);
+
+  useLocationBroadcast(handleLocationUpdate);
+
+  const handleNearbyReport = useCallback((report: AccidentReport) => {
+    showAccidentNotification(
+      `🚨 ${report.severity.toUpperCase()} Accident Nearby`,
+      `${report.title} - ${report.location.address}`,
+      { reportId: report.id }
+    );
+  }, []);
+
+  useReportSocket(handleNearbyReport);
 
   return (
     <View

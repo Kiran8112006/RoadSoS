@@ -24,15 +24,19 @@ export default function Navbar() {
       <TouchableOpacity onPress={() => router.push('/home')}>
         <Text style={{ fontWeight: 'bold' }}>Home</Text>
       </TouchableOpacity>
-
       <TouchableOpacity onPress={() => router.push('/protection')}>
         <Text style={{ fontWeight: 'bold' }}>Safety</Text>
       </TouchableOpacity>
-
+      <TouchableOpacity
+        onPress={() =>
+          router.push('/reports' as any)
+        }
+      >
+        <Text style={{ fontWeight: 'bold' }}>Report</Text>
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/maps')}>
         <Text style={{ fontWeight: 'bold' }}>Maps</Text>
       </TouchableOpacity>
-
       <TouchableOpacity onPress={() => router.push('/theft/index')}>
         <Text style={{ fontWeight: 'bold' }}>Theft</Text>
       </TouchableOpacity>
