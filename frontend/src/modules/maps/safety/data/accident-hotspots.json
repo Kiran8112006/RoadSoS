@@ -1,0 +1,190 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Accident hotspots for South and Southeast Asia (Bangladesh, Bhutan, Myanmar, Nepal, Sri Lanka, Thailand). Data sources: government open data, OSM analysis, and historical patterns.",
+    "lastUpdated": "2026-05-28",
+    "disclaimer": "This is synthetic/aggregated data for hackathon demonstration. Real deployment should use actual government crash datasets."
+  },
+  "hotspots": [
+    {
+      "city": "Bengaluru, India",
+      "latitude": 12.9716,
+      "longitude": 77.5946,
+      "riskScore": 0.86,
+      "severity": "high",
+      "count": 340,
+      "description": "Central Bengaluru - dense traffic, frequent junction conflicts"
+    },
+    {
+      "city": "Bengaluru, India",
+      "latitude": 12.9352,
+      "longitude": 77.6245,
+      "riskScore": 0.82,
+      "severity": "high",
+      "count": 285,
+      "description": "Koramangala and Inner Ring Road - high mixed vehicle density"
+    },
+    {
+      "city": "Bengaluru, India",
+      "latitude": 12.9279,
+      "longitude": 77.6271,
+      "riskScore": 0.76,
+      "severity": "medium",
+      "count": 220,
+      "description": "Silk Board junction area - congestion and lane weaving"
+    },
+    {
+      "city": "Bengaluru, India",
+      "latitude": 12.9822,
+      "longitude": 77.6408,
+      "riskScore": 0.72,
+      "severity": "medium",
+      "count": 190,
+      "description": "Indiranagar approach roads - high two-wheeler and pedestrian activity"
+    },
+    {
+      "city": "Bengaluru, India",
+      "latitude": 13.0358,
+      "longitude": 77.5970,
+      "riskScore": 0.79,
+      "severity": "medium",
+      "count": 245,
+      "description": "Hebbal flyover approach - fast traffic merging with local roads"
+    },
+    {
+      "city": "Bengaluru, India",
+      "latitude": 12.9166,
+      "longitude": 77.6101,
+      "riskScore": 0.68,
+      "severity": "medium",
+      "count": 165,
+      "description": "BTM and Bannerghatta Road connector - heavy stop-go traffic"
+    },
+    {
+      "city": "Dhaka, Bangladesh",
+      "latitude": 23.8103,
+      "longitude": 90.4125,
+      "riskScore": 0.95,
+      "severity": "high",
+      "count": 450,
+      "description": "Downtown Dhaka - high traffic congestion, major intersection"
+    },
+    {
+      "city": "Dhaka, Bangladesh",
+      "latitude": 23.7808,
+      "longitude": 90.3617,
+      "riskScore": 0.88,
+      "severity": "high",
+      "count": 320,
+      "description": "Airport road - high speed mixed with pedestrian traffic"
+    },
+    {
+      "city": "Dhaka, Bangladesh",
+      "latitude": 23.9199,
+      "longitude": 90.4466,
+      "riskScore": 0.75,
+      "severity": "medium",
+      "count": 210,
+      "description": "Mirpur - busy commercial area with poor road conditions"
+    },
+    {
+      "city": "Colombo, Sri Lanka",
+      "latitude": 6.9271,
+      "longitude": 80.7789,
+      "riskScore": 0.92,
+      "severity": "high",
+      "count": 380,
+      "description": "Central Colombo - urban congestion, narrow roads"
+    },
+    {
+      "city": "Colombo, Sri Lanka",
+      "latitude": 6.8456,
+      "longitude": 80.7658,
+      "riskScore": 0.78,
+      "severity": "medium",
+      "count": 240,
+      "description": "Galle Road - main highway with mixed traffic"
+    },
+    {
+      "city": "Kathmandu, Nepal",
+      "latitude": 27.7172,
+      "longitude": 85.3240,
+      "riskScore": 0.85,
+      "severity": "high",
+      "count": 290,
+      "description": "Central Kathmandu - narrow streets, high density"
+    },
+    {
+      "city": "Kathmandu, Nepal",
+      "latitude": 27.6759,
+      "longitude": 85.4187,
+      "riskScore": 0.72,
+      "severity": "medium",
+      "count": 180,
+      "description": "Bhaktapur Road - winding mountain road"
+    },
+    {
+      "city": "Bangkok, Thailand",
+      "latitude": 13.7563,
+      "longitude": 100.5018,
+      "riskScore": 0.90,
+      "severity": "high",
+      "count": 520,
+      "description": "Central Bangkok - extreme traffic congestion, multiple accidents daily"
+    },
+    {
+      "city": "Bangkok, Thailand",
+      "latitude": 13.6520,
+      "longitude": 100.4934,
+      "riskScore": 0.82,
+      "severity": "high",
+      "count": 350,
+      "description": "Rama IV Road - busy highway, high speed"
+    },
+    {
+      "city": "Bangkok, Thailand",
+      "latitude": 13.5893,
+      "longitude": 100.5681,
+      "riskScore": 0.68,
+      "severity": "medium",
+      "count": 200,
+      "description": "Samut Prakan - industrial area, truck traffic"
+    },
+    {
+      "city": "Yangon, Myanmar",
+      "latitude": 16.8661,
+      "longitude": 96.1951,
+      "riskScore": 0.80,
+      "severity": "high",
+      "count": 270,
+      "description": "Downtown Yangon - urban center, crowded intersections"
+    },
+    {
+      "city": "Yangon, Myanmar",
+      "latitude": 16.9145,
+      "longitude": 96.2094,
+      "riskScore": 0.70,
+      "severity": "medium",
+      "count": 160,
+      "description": "Shwedagon area - tourist area with mixed traffic patterns"
+    },
+    {
+      "city": "Thimphu, Bhutan",
+      "latitude": 27.5142,
+      "longitude": 89.6419,
+      "riskScore": 0.65,
+      "severity": "medium",
+      "count": 85,
+      "description": "Central Thimphu - winding roads, steep terrain"
+    },
+    {
+      "city": "Thimphu, Bhutan",
+      "latitude": 27.4567,
+      "longitude": 89.5832,
+      "riskScore": 0.55,
+      "severity": "low",
+      "count": 45,
+      "description": "Outskirts - mountain roads, lower traffic"
+    }
+  ]
+}
