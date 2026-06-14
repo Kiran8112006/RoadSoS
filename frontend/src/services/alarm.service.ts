@@ -6,7 +6,7 @@ import {
   Vibration,
 } from 'react-native';
 
-let alarmSound: Audio.Sound | null =
+let alarm: Audio.Sound | null =
   null;
 
 const alarmVibrationPattern = [
@@ -21,7 +21,7 @@ async () => {
 
   try {
 
-    if (alarmSound) {
+    if (alarm) {
       return;
     }
 
@@ -47,15 +47,17 @@ async () => {
         }
       );
 
-    alarmSound =
+    alarm =
       sound;
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     Vibration.cancel();
 
     console.log(
-      'ALARM PLAY ERROR:',
+      'START ALARM ERROR:',
       error
     );
 
@@ -70,20 +72,23 @@ async () => {
 
     Vibration.cancel();
 
-    if (!alarmSound) {
+    if (!alarm) {
       return;
     }
 
-    await alarmSound.stopAsync();
-    await alarmSound.unloadAsync();
+    await alarm.stopAsync();
 
-    alarmSound =
+    await alarm.unloadAsync();
+
+    alarm =
       null;
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.log(
-      'ALARM STOP ERROR:',
+      'STOP ALARM ERROR:',
       error
     );
 
