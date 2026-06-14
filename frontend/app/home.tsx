@@ -5,6 +5,10 @@ import {
 } from 'react-native';
 
 import {
+  useEffect,
+} from 'react';
+
+import {
   signOut,
 } from 'firebase/auth';
 
@@ -13,7 +17,13 @@ from '@react-native-firebase/auth';
 
 import {
   auth,
+  db,
 } from '../src/services/firebase/firebase.config';
+
+import {
+  doc,
+  setDoc,
+} from 'firebase/firestore';
 
 import {
   router,
@@ -22,7 +32,81 @@ import {
 import Navbar
 from '../src/components/ui/Navbar';
 
+import {
+  getFCMToken,
+} from '../src/services/fcm.service';
+
 export default function Home() {
+
+  useEffect(() => {
+
+    const setupFCM =
+      async () => {
+
+        try {
+
+          console.log(
+            'STARTING FCM SETUP'
+          );
+
+          const token =
+            await getFCMToken();
+
+          console.log(
+            'TOKEN RECEIVED:',
+            token
+          );
+
+          console.log(
+            'FCM TOKEN:',
+            token
+          );
+
+          if (
+            token &&
+            auth.currentUser
+          ) {
+
+            await setDoc(
+
+              doc(
+                db,
+                'users',
+                auth.currentUser.uid
+              ),
+
+              {
+                fcmToken: token,
+              },
+
+              {
+                merge: true,
+              }
+
+            );
+
+            console.log(
+              'FCM TOKEN SAVED'
+            );
+
+          }
+
+        }
+
+        catch (error) {
+
+          console.log(
+            'FCM ERROR:',
+            error
+          );
+
+        }
+
+      };
+
+    setupFCM();
+
+  }, []);
 
   const handleLogout =
     async () => {
@@ -43,13 +127,9 @@ export default function Home() {
     <View
       style={{
         flex: 1,
-
         justifyContent: 'center',
-
         alignItems: 'center',
-
         backgroundColor: 'white',
-
         padding: 24,
       }}
     >
@@ -57,7 +137,6 @@ export default function Home() {
       <Text
         style={{
           fontSize: 34,
-
           fontWeight: 'bold',
         }}
       >
@@ -67,9 +146,7 @@ export default function Home() {
       <Text
         style={{
           marginTop: 10,
-
           fontSize: 16,
-
           color: 'gray',
         }}
       >
@@ -80,13 +157,9 @@ export default function Home() {
         onPress={handleLogout}
         style={{
           marginTop: 30,
-
           backgroundColor: '#ff3b30',
-
           paddingVertical: 14,
-
           paddingHorizontal: 30,
-
           borderRadius: 14,
         }}
       >
@@ -94,9 +167,7 @@ export default function Home() {
         <Text
           style={{
             color: 'white',
-
             fontWeight: 'bold',
-
             fontSize: 16,
           }}
         >

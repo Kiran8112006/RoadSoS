@@ -1,39 +1,70 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const { admin, db } = require("./firebaseAdmin");
 
 const app = express();
 
-const profileRoutes =
-  require('./routes/profile.routes');
-
-const trackingRoutes =
-    require('./routes/trackingRoutes');
-
-const emergencyRoutes =
-require(
-  './routes/emergencyRoutes'
-);
-
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const profileRoutes = require("./routes/profile.routes");
+
+const emergencyRoutes = require("./routes/emergencyRoutes");
+
+const alertRoutes =
+  require(
+    "./routes/alertRoutes"
+  );
+
+const hospitalRoutes =
+  require(
+    "./routes/hospitalRoutes"
+  );
+
+const pdfRoutes =
+  require(
+    "./routes/pdfRoutes"
+  );
 
 app.use(
-  '/api/tracking',
-  trackingRoutes
+  "/api/pdf",
+  pdfRoutes
 );
 
 app.use(
-  '/api/profile',
-  profileRoutes
+  "/api/alerts",
+  alertRoutes
 );
 
 app.use(
-  '/api/emergency',
-  emergencyRoutes
+  "/api/hospitals",
+  hospitalRoutes
 );
 
-// Middleware to verify Firebase login token
+app.use("/api/emergency", emergencyRoutes);
+app.use("/api/profile", profileRoutes);
+
+function calculateAge(dob) {
+    if (!dob) return null;
+
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+        age--;
+    }
+
+    return age;
+}
+
 async function verifyFirebaseToken(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
@@ -59,7 +90,6 @@ async function verifyFirebaseToken(req, res, next) {
     }
 }
 
-// Save user profile after first login
 app.post("/api/users/profile", verifyFirebaseToken, async (req, res) => {
     try {
         const uid = req.user.uid;
@@ -68,22 +98,57 @@ app.post("/api/users/profile", verifyFirebaseToken, async (req, res) => {
             fullName,
             email,
             phone,
-            age,
+            dob,
             gender,
             bloodGroup,
             allergies,
             medicalConditions,
             medications,
-            existingDiseases,
-            address,
             emergencyNotes,
             emergencyContacts,
         } = req.body;
 
-        if (!fullName || !phone || !bloodGroup) {
+        const allowedGenders = ["Male", "Female", "Others"];
+
+        if (
+            !fullName ||
+            !email ||
+            !phone ||
+            !dob ||
+            !gender ||
+            !bloodGroup ||
+            !allergies ||
+            !Array.isArray(allergies) ||
+            allergies.length === 0 ||
+            !medicalConditions ||
+            !Array.isArray(medicalConditions) ||
+            medicalConditions.length === 0 ||
+            !medications ||
+            !Array.isArray(medications) ||
+            medications.length === 0 ||
+            !emergencyNotes ||
+            !emergencyContacts ||
+            !Array.isArray(emergencyContacts) ||
+            emergencyContacts.length === 0
+        ) {
             return res.status(400).json({
-                message: "Full name, phone, and blood group are required",
+                message: "All fields are mandatory. Please complete the profile.",
             });
+        }
+
+        if (!allowedGenders.includes(gender)) {
+            return res.status(400).json({
+                message: "Gender must be Male, Female, or Others",
+            });
+        }
+
+        for (const contact of emergencyContacts) {
+            if (!contact.name || !contact.phone || !contact.relationship) {
+                return res.status(400).json({
+                    message:
+                        "Each emergency contact must include name, phone, and relationship",
+                });
+            }
         }
 
         const userRef = db.collection("users").doc(uid);
@@ -92,13 +157,12 @@ app.post("/api/users/profile", verifyFirebaseToken, async (req, res) => {
             {
                 uid,
                 fullName,
-                email: email || req.user.email || "",
+                email,
                 phone,
-                age: age || null,
-                gender: gender || "",
+                dob,
+                gender,
                 role: "user",
                 authProvider: req.user.firebase.sign_in_provider,
-                address: address || "",
                 profileCompleted: true,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -109,35 +173,28 @@ app.post("/api/users/profile", verifyFirebaseToken, async (req, res) => {
         await userRef.collection("medicalInfo").doc("private").set(
             {
                 fullName,
-                age: age || null,
-                gender: gender || "",
+                dob,
+                gender,
                 bloodGroup,
-                allergies: allergies || [],
-                medicalConditions: medicalConditions || [],
-                medications: medications || [],
-                existingDiseases: existingDiseases || [],
-                emergencyNotes: emergencyNotes || "",
+                allergies,
+                medicalConditions,
+                medications,
+                emergencyNotes,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
             { merge: true }
         );
 
-        if (Array.isArray(emergencyContacts)) {
-            const contactsRef = userRef.collection("emergencyContacts");
+        const contactsRef = userRef.collection("emergencyContacts");
 
-            for (const contact of emergencyContacts) {
-                if (!contact.name || !contact.phone) {
-                    continue;
-                }
-
-                await contactsRef.add({
-                    name: contact.name,
-                    phone: contact.phone,
-                    relationship: contact.relationship || "",
-                    isPrimary: contact.isPrimary || false,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
-            }
+        for (const contact of emergencyContacts) {
+            await contactsRef.add({
+                name: contact.name,
+                phone: contact.phone,
+                relationship: contact.relationship,
+                isPrimary: contact.isPrimary || false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
         }
 
         return res.status(200).json({
@@ -152,12 +209,13 @@ app.post("/api/users/profile", verifyFirebaseToken, async (req, res) => {
     }
 });
 
-// Get current user's profile
 app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
     try {
         const uid = req.user.uid;
 
-        const userDoc = await db.collection("users").doc(uid).get();
+        const userRef = db.collection("users").doc(uid);
+
+        const userDoc = await userRef.get();
 
         if (!userDoc.exists) {
             return res.status(404).json({
@@ -165,16 +223,12 @@ app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
             });
         }
 
-        const medicalDoc = await db
-            .collection("users")
-            .doc(uid)
+        const medicalDoc = await userRef
             .collection("medicalInfo")
             .doc("private")
             .get();
 
-        const contactsSnapshot = await db
-            .collection("users")
-            .doc(uid)
+        const contactsSnapshot = await userRef
             .collection("emergencyContacts")
             .get();
 
@@ -183,9 +237,20 @@ app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
             ...doc.data(),
         }));
 
+        const userData = userDoc.data();
+        const medicalData = medicalDoc.exists ? medicalDoc.data() : null;
+
         return res.status(200).json({
-            user: userDoc.data(),
-            medicalInfo: medicalDoc.exists ? medicalDoc.data() : null,
+            user: {
+                ...userData,
+                age: calculateAge(userData.dob),
+            },
+            medicalInfo: medicalData
+                ? {
+                      ...medicalData,
+                      age: calculateAge(medicalData.dob),
+                  }
+                : null,
             emergencyContacts: contacts,
         });
     } catch (error) {
@@ -199,7 +264,5 @@ app.get("/api/users/profile", verifyFirebaseToken, async (req, res) => {
 const PORT = 5000;
 
 app.listen(PORT, () => {
-  console.log(
-    `Server running on port ${PORT}`
-  );
+    console.log(`Server running on port ${PORT}`);
 });

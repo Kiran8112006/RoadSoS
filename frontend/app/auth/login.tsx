@@ -32,54 +32,32 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleEmailLogin = async () => {
-
   try {
+    const response = await loginUser(email, password);
 
-    const response =
-      await loginUser(
-        email,
-        password
-      );
+    console.log("LOGIN SUCCESS:", response.user.email);
 
-    Alert.alert(
-      'Login Success',
-      `Welcome ${response.user.email}`
-    );
+    const profileResponse = await getUserProfile();
 
-    const profileResponse =
-      await getUserProfile();
+    console.log("PROFILE RESPONSE:", profileResponse);
 
-    if (
-      profileResponse
-        ?.profileCompleted
-    ) {
-
-      router.replace('/home');
-
+    if (profileResponse?.profileCompleted === true) {
+      router.replace("/home");
     } else {
-
-      router.replace(
-        '/auth/complete-profile'
-      );
-
+      router.replace("/auth/complete-profile");
     }
-
   } catch (error: any) {
+    console.log("LOGIN ERROR:", error);
 
-    console.log(error);
-
-    if (
-      error.response?.status === 404
-    ) {
-
-      router.replace(
-        '/auth/complete-profile'
+    if (error.response?.status === 404) {
+      router.replace("/auth/complete-profile");
+    } else {
+      Alert.alert(
+        "Login Failed",
+        error.message || "Something went wrong"
       );
-
     }
-
   }
-
 };
 
 useEffect(() => {
@@ -112,10 +90,6 @@ const handleGoogleLogin = async () => {
 
     console.log('USER:', userCredential.user);
 
-    Alert.alert(
-      'Success',
-      'Google Login Successful'
-    );
     const response =
       await getUserProfile();
       console.log(response);

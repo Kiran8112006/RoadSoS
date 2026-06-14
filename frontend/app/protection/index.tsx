@@ -1,4 +1,16 @@
 import {
+  triggerEmergency,
+} from '@/src/services/emergency.service';
+
+import {
+  showAlertSentNotification,
+} from '@/src/services/localNotification.service';
+
+import {
+  auth,
+} from '@/src/services/firebase/firebase.config';
+
+import {
   Text,
   ScrollView,
   TouchableOpacity,
@@ -50,6 +62,7 @@ import {
 
 import {
   startLocationTracking,
+  getCurrentAccurateLocation,
   stopLocationTracking,
 } from '../../src/services/location.service';
 
@@ -81,11 +94,18 @@ import {
   router,
 } from 'expo-router';
 
+import {
+  useLocalSearchParams,
+} from 'expo-router';
+
 export default function ProtectionScreen() {
 
   const {
     isProtectionActive,
   } = useRideStore();
+
+  const params =
+  useLocalSearchParams();
 
   /*
     SENSOR STATES
@@ -123,6 +143,11 @@ export default function ProtectionScreen() {
   const [isCrashConfirmed,
   setIsCrashConfirmed] =
     useState(false);
+
+  const [
+  pendingEmergency,
+  setPendingEmergency
+] = useState(false);
 
   /*
     START SERVICES
@@ -294,6 +319,119 @@ export default function ProtectionScreen() {
 
 ]);
 
+
+useEffect(() => {
+
+  if (
+    params.emergency
+    !== 'true'
+  ) return;
+
+  setPendingEmergency(
+    true
+  );
+
+}, []);
+
+useEffect(() => {
+
+  if (
+    !pendingEmergency
+  ) return;
+
+  const timer =
+    setTimeout(
+      async () => {
+
+        if (
+          isInactive
+        ) {
+
+          const emergencyLocation =
+            await getCurrentAccurateLocation();
+
+          const alertLocation =
+            emergencyLocation ||
+            location;
+
+          if (
+            !alertLocation?.coords?.latitude ||
+            !alertLocation?.coords?.longitude
+          ) {
+
+            console.log(
+              'EMERGENCY LOCATION NOT AVAILABLE'
+            );
+
+            setPendingEmergency(
+              false
+            );
+
+            return;
+
+          }
+
+          console.log(
+            'SENDING EMERGENCY LOCATION:',
+            {
+              latitude:
+                alertLocation.coords.latitude,
+              longitude:
+                alertLocation.coords.longitude,
+              accuracy:
+                alertLocation.coords.accuracy,
+            }
+          );
+
+          const response =
+            await triggerEmergency(
+
+            alertLocation.coords.latitude,
+
+            alertLocation.coords.longitude,
+
+            auth.currentUser?.uid || ''
+
+          );
+
+          if (
+            response?.success
+          ) {
+
+            await showAlertSentNotification();
+
+          }
+
+          console.log(
+            'EMERGENCY TRIGGERED'
+          );
+
+          /*
+           triggerEmergency()
+          */
+
+        }
+
+        setPendingEmergency(
+          false
+        );
+
+      },
+
+      5000
+
+    );
+
+  return () =>
+    clearTimeout(timer);
+
+}, [
+
+  pendingEmergency,
+
+  isInactive
+
+]);
   return (
 
     <ScrollView

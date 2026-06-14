@@ -1,176 +1,271 @@
-const express = require('express');
-
-const admin = require('firebase-admin');
+const express = require("express");
+const admin = require("firebase-admin");
 
 const router = express.Router();
 
-router.post(
-  '/complete',
-  async (req, res) => {
+function calculateAge(dob) {
+  if (!dob) return null;
 
+  const birthDate = new Date(dob);
+  const today = new Date();
 
-    try {
+  let age =
+    today.getFullYear() -
+    birthDate.getFullYear();
 
-      const {
+  const monthDiff =
+    today.getMonth() -
+    birthDate.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 &&
+      today.getDate() < birthDate.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
+}
+
+router.post("/complete", async (req, res) => {
+  try {
+    const {
+      fullName,
+      email,
+      phone,
+      dob,
+      gender,
+      bloodGroup,
+      allergies,
+      medicalConditions,
+      medications,
+      emergencyNotes,
+      emergencyContacts,
+    } = req.body;
+
+    const token =
+      req.headers.authorization?.split("Bearer ")[1];
+
+    if (!token) {
+      return res.status(401).json({
+        message: "No token provided",
+      });
+    }
+
+    const decodedToken = await admin
+      .auth()
+      .verifyIdToken(token);
+
+    const uid = decodedToken.uid;
+
+    const allowedGenders = [
+      "Male",
+      "Female",
+      "Others",
+    ];
+
+    if (
+      !fullName ||
+      !email ||
+      !phone ||
+      !dob ||
+      !gender ||
+      !bloodGroup ||
+      !allergies ||
+      !medicalConditions ||
+      !medications ||
+      !emergencyNotes ||
+      !emergencyContacts ||
+      !Array.isArray(emergencyContacts) ||
+      emergencyContacts.length === 0
+    ) {
+      return res.status(400).json({
+        message:
+          "All fields are mandatory. Please complete the profile.",
+      });
+    }
+
+    if (!allowedGenders.includes(gender)) {
+      return res.status(400).json({
+        message:
+          "Gender must be Male, Female, or Others",
+      });
+    }
+
+    for (const contact of emergencyContacts) {
+      if (
+        !contact.name ||
+        !contact.phone ||
+        !contact.relationship
+      ) {
+        return res.status(400).json({
+          message:
+            "Each emergency contact must include name, phone, and relationship",
+        });
+      }
+    }
+
+    const userRef = admin
+      .firestore()
+      .collection("users")
+      .doc(uid);
+
+    await userRef.set(
+      {
+        uid,
         fullName,
-        age,
+        email:
+          email ||
+          decodedToken.email ||
+          "",
+        phone:
+          phone ||
+          decodedToken.phone_number ||
+          "",
+        dob,
         gender,
-        role,
+        role: "user",
         bloodGroup,
         allergies,
         medicalConditions,
         medications,
         emergencyNotes,
-        emergencyContacts,
-      } = req.body;
+        profileCompleted: true,
+        updatedAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+        createdAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-      const token =
-        req.headers.authorization?.split(
-          'Bearer '
-        )[1];
+    const contactsRef = userRef.collection(
+      "emergencyContacts"
+    );
 
-      if (!token) {
+    for (const contact of emergencyContacts) {
+      const contactsRef =
+        userRef.collection("emergencyContacts");
 
-        return res.status(401).json({
-          message: 'No token provided',
-        });
+      for (const contact of emergencyContacts) {
 
-      }
+        let contactUserId = null;
 
-      const decodedToken =
-        await admin
-          .auth()
-          .verifyIdToken(token);
+        const matchingUsers =
+          await admin
+            .firestore()
+            .collection("users")
+            .where(
+              "phone",
+              "==",
+              contact.phone
+            )
+            .limit(1)
+            .get();
 
-      const uid =
-        decodedToken.uid;
+        if (!matchingUsers.empty) {
 
+          contactUserId =
+            matchingUsers.docs[0].id;
 
-      await admin
-        .firestore()
-        .collection('users')
-        .doc(uid)
-        .set({
-          fullName,
-          age,
-          gender,
-          role,
-          bloodGroup,
-          allergies,
-          medicalConditions,
-          medications,
-          emergencyNotes,
+        }
 
-          email:
-            decodedToken.email || '',
+        await contactsRef.add({
+
+          name:
+            contact.name,
 
           phone:
-            decodedToken.phone_number || '',
+            contact.phone,
 
-          profileCompleted: true,
+          relationship:
+            contact.relationship,
+
+          contactUserId,
+
+          isPrimary:
+            contact.isPrimary || false,
 
           createdAt:
             admin.firestore.FieldValue.serverTimestamp(),
+
         });
 
-      for (
-        let i = 0;
-        i < emergencyContacts.length;
-        i++
-      ) {
-
-        await admin
-          .firestore()
-          .collection('users')
-          .doc(uid)
-          .collection(
-            'emergencyContacts'
-          )
-          .add({
-            ...emergencyContacts[i],
-            createdAt:
-              admin.firestore.FieldValue.serverTimestamp(),
-          });
-
       }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          'Profile completed successfully',
-      });
-
-    } catch (error) {
-
-      console.log(error);
-
-      return res.status(500).json({
-        message:
-          'Server Error',
-      });
-
     }
 
+    return res.status(200).json({
+      success: true,
+      message:
+        "Profile completed successfully",
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
-);
-router.get(
-  '/profile',
-  async (req, res) => {
+});
 
+router.get("/profile", async (req, res) => {
+  try {
+    const token =
+      req.headers.authorization?.split("Bearer ")[1];
 
-    try {
-
-      const token =
-        req.headers.authorization?.split(
-          'Bearer '
-        )[1];
-
-      if (!token) {
-
-        return res.status(401).json({
-          message: 'No token provided',
-        });
-
-      }
-
-      const decodedToken =
-        await admin
-          .auth()
-          .verifyIdToken(token);
-
-      const uid =
-        decodedToken.uid;
-
-
-      const userDoc =
-        await admin
-          .firestore()
-          .collection('users')
-          .doc(uid)
-          .get();
-
-      if (!userDoc.exists) {
-
-        return res.status(404).json({
-          message: 'User profile not found',
-        });
-
-      }
-
-      return res.status(200).json(
-        userDoc.data()
-      );
-
-    } catch (error) {
-
-      console.log(error);
-
-      return res.status(500).json({
-        message: 'Server Error',
+    if (!token) {
+      return res.status(401).json({
+        message: "No token provided",
       });
-
     }
 
+    const decodedToken = await admin
+      .auth()
+      .verifyIdToken(token);
+
+    const uid = decodedToken.uid;
+
+    const userRef = admin
+      .firestore()
+      .collection("users")
+      .doc(uid);
+
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({
+        message: "User profile not found",
+      });
+    }
+
+    const contactsSnapshot =
+      await userRef
+        .collection("emergencyContacts")
+        .get();
+
+    const emergencyContacts =
+      contactsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+    const userData = userDoc.data();
+
+    return res.status(200).json({
+      ...userData,
+      age: calculateAge(userData.dob),
+      emergencyContacts,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
-);
+});
+
 module.exports = router;

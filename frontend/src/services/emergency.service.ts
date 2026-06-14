@@ -1,33 +1,31 @@
-import axios from 'axios';
-
-export const triggerEmergency =
-async (
-
-  location: any,
-
-  risk: number,
-
+export const triggerEmergency = async (
+  latitude: number,
+  longitude: number,
+  userId: string,
 ) => {
+  try {
+    const response = await fetch(
+      `${process.env.EXPO_PUBLIC_API_URL}/api/emergency/trigger`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          latitude,
+          longitude,
+          userId,
+        }),
+      }
+    );
 
-  return axios.post(
+    const data = await response.json();
 
-    'http://YOUR_IP:5000/api/emergency/trigger',
+    console.log(data);
 
-    {
-
-      latitude:
-        location?.coords?.latitude,
-
-      longitude:
-        location?.coords?.longitude,
-
-      risk,
-
-      timestamp:
-        Date.now(),
-
-    }
-
-  );
-
+    return data;
+  } catch (error) {
+    console.log('Emergency trigger error:', error);
+    throw error;
+  }
 };

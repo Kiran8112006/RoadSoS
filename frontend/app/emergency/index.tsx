@@ -87,17 +87,32 @@ export default function EmergencyScreen() {
       const sendEmergency =
         async () => {
 
-          if (sound) {
+          try {
 
-            await sound.stopAsync();
+            if (sound) {
 
-            await sound.unloadAsync();
+              await sound.stopAsync();
+
+              await sound.unloadAsync();
+
+            }
 
           }
 
-          console.log(
-            'EMERGENCY SENT'
-          );
+          catch(error) {
+
+            console.log(
+              'Sound already unloaded'
+            );
+
+          }
+
+          router.replace({
+            pathname: '/protection',
+            params: {
+              emergency: 'true',
+            },
+          });
 
         };
 
@@ -143,11 +158,23 @@ export default function EmergencyScreen() {
 
       Vibration.cancel();
 
-      if (sound) {
+      try {
 
-        await sound.stopAsync();
+        if (sound) {
 
-        await sound.unloadAsync();
+          await sound.stopAsync();
+
+          await sound.unloadAsync();
+
+        }
+
+      }
+
+      catch(error) {
+
+        console.log(
+          'Sound already unloaded'
+        );
 
       }
 
