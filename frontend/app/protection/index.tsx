@@ -83,6 +83,13 @@ import {
 } from '@/src/services/crashConfirmation.service';
 
 import {
+  addSample,
+  getFeatures,
+  getDrivingBehaviorPrediction,
+  clearDrivingBehaviorHistory,
+} from '../../src/services/drivingBehavior.service';
+
+import {
 
   createSuspiciousEvent,
 
@@ -151,6 +158,9 @@ export default function ProtectionScreen() {
   setPendingEmergency
 ] = useState(false);
 
+  const [latestPrediction, setLatestPrediction] = useState<number | null>(null);
+  const [latestConfidence, setLatestConfidence] = useState<number | null>(null);
+
   /*
     START SERVICES
   */
@@ -196,6 +206,45 @@ export default function ProtectionScreen() {
   }, [isProtectionActive]);
 
   /*
+    DRIVING BEHAVIOR ML PREDICTION TIMER
+  */
+  useEffect(() => {
+    if (!isProtectionActive) {
+      clearDrivingBehaviorHistory();
+      setLatestPrediction(null);
+      setLatestConfidence(null);
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      console.log(
+        "ML TIMER FIRED"
+      );
+
+      const features = getFeatures();
+
+      console.log(
+        "FEATURES GENERATED:",
+        features?.length
+      );
+
+      if (features) {
+        try {
+          const res = await getDrivingBehaviorPrediction(features);
+          if (res) {
+            setLatestPrediction(res.prediction);
+            setLatestConfidence(res.confidence);
+          }
+        } catch (err) {
+          console.error("Error fetching driving behavior prediction:", err);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isProtectionActive]);
+
+  /*
     MAIN DETECTION ENGINE
   */
 
@@ -216,11 +265,15 @@ export default function ProtectionScreen() {
         location?.coords?.speed || 0
       ) * 3.6;
 
+    if (accel && gyro) {
+      addSample(speed, accel, gyro);
+    }
+
     /*
       CRASH RISK
     */
 
-    const risk =
+    const baseRisk =
       calculateCrashRisk(
 
         speed,
@@ -230,6 +283,17 @@ export default function ProtectionScreen() {
         gyro
 
       );
+
+    const mlBonus = (latestPrediction === 1 || latestPrediction === 2)
+      ? 15 * (latestConfidence || 0)
+      : 0;
+    const risk = Math.min(100, baseRisk + mlBonus);
+
+    console.log("ML Prediction:", latestPrediction);
+    console.log("ML Confidence:", latestConfidence);
+    console.log("ML Bonus:", mlBonus);
+    console.log("Base Risk:", baseRisk);
+    console.log("Adjusted Risk:", risk);
 
     const decel =
       calculateDeceleration(
@@ -248,7 +312,7 @@ export default function ProtectionScreen() {
       CREATE EVENT
     */
 
-    if (risk > 20) {
+    if (risk > 40) {
 
       createSuspiciousEvent({
 
@@ -331,7 +395,11 @@ export default function ProtectionScreen() {
 
     location,
 
-    isProtectionActive
+    isProtectionActive,
+
+    latestPrediction,
+
+    latestConfidence
 
   ]);
 
