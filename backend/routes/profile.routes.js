@@ -140,6 +140,50 @@ router.post("/complete", async (req, res) => {
       { merge: true }
     );
 
+    const allUsers =
+      await admin
+        .firestore()
+        .collection("users")
+        .get();
+
+    for (
+      const userDoc
+      of allUsers.docs
+    ) {
+
+      const contactsSnapshot =
+        await userDoc.ref
+          .collection(
+            "emergencyContacts"
+          )
+          .where(
+            "phone",
+            "==",
+            phone
+          )
+          .get();
+
+      for (
+        const contactDoc
+        of contactsSnapshot.docs
+      ) {
+
+        await contactDoc.ref
+          .update({
+
+            contactUserId:
+              uid,
+
+          });
+
+        console.log(
+          `Linked ${phone} to ${uid}`
+        );
+
+      }
+
+    }
+
     const contactsRef = userRef.collection(
       "emergencyContacts"
     );
