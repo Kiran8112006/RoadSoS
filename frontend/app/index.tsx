@@ -15,6 +15,10 @@ import {
   useAuth,
 } from '../src/context/AuthContext';
 
+import {
+  getUserProfile,
+} from '../src/services/api/profile.api';
+
 export default function Index() {
 
   const {
@@ -28,7 +32,54 @@ export default function Index() {
 
     if (user) {
 
-      router.replace('/home');
+      let active = true;
+
+      const routeByProfile =
+        async () => {
+
+          try {
+
+            const profile =
+              await getUserProfile();
+
+            if (!active) return;
+
+            router.replace(
+              profile?.profileCompleted === true
+                ? '/home'
+                : '/auth/complete-profile'
+            );
+
+          } catch (error: any) {
+
+            if (!active) return;
+
+            if (error.response?.status === 404) {
+
+              router.replace(
+                '/auth/complete-profile'
+              );
+
+              return;
+
+            }
+
+            console.log(
+              'PROFILE ROUTE ERROR:',
+              error
+            );
+
+            router.replace('/auth/login');
+
+          }
+
+        };
+
+      routeByProfile();
+
+      return () => {
+        active = false;
+      };
 
     } else {
 

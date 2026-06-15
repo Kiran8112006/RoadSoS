@@ -54,6 +54,7 @@ export const getUserProfile =
         profileUrl,
         {
           headers,
+          timeout: 10000,
         }
       );
 
@@ -85,6 +86,7 @@ export const completeProfile =
         data,
         {
           headers,
+          timeout: 10000,
         }
       );
 

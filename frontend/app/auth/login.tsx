@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -8,11 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { loginUser } from '@/src/services/firebase/firebase.auth';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
-import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '@/src/services/firebase/firebase.config';
 
@@ -30,9 +33,14 @@ import {
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleEmailLogin = async () => {
+  if (loading) return;
+
   try {
+    setLoading(true);
+
     const response = await loginUser(email, password);
 
     console.log("LOGIN SUCCESS:", response.user.email);
@@ -54,9 +62,13 @@ export default function LoginScreen() {
     } else {
       Alert.alert(
         "Login Failed",
-        error.message || "Something went wrong"
+        error.code === 'ECONNABORTED'
+          ? 'Profile request timed out. Check that your backend is running and reachable from this device.'
+          : error.message || "Something went wrong"
       );
     }
+  } finally {
+    setLoading(false);
   }
 };
 
@@ -68,7 +80,11 @@ useEffect(() => {
 }, []);
 
 const handleGoogleLogin = async () => {
+  if (loading) return;
+
   try {
+    setLoading(true);
+
     await GoogleSignin.hasPlayServices();
 
     const userInfo = await GoogleSignin.signIn();
@@ -117,8 +133,17 @@ const handleGoogleLogin = async () => {
           '/auth/complete-profile'
       );
 
+    } else {
+      Alert.alert(
+        'Login Failed',
+        error.code === 'ECONNABORTED'
+          ? 'Profile request timed out. Check that your backend is running and reachable from this device.'
+          : error.message || 'Something went wrong'
+      );
     }
 
+} finally {
+  setLoading(false);
 }
 };
 
@@ -223,23 +248,28 @@ const handleGoogleLogin = async () => {
           {/* Login Button */}
           <TouchableOpacity
             onPress={handleEmailLogin}
+            disabled={loading}
             style={{
-              backgroundColor: '#E53E3E',
+              backgroundColor: loading ? '#7F1D1D' : '#E53E3E',
               paddingVertical: 16,
               borderRadius: 14,
               alignItems: 'center',
               marginBottom: 18,
             }}
           >
-            <Text
-              style={{
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: '600',
-              }}
-            >
-              Login
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text
+                style={{
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600',
+                }}
+              >
+                Login
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Divider */}
@@ -279,6 +309,7 @@ const handleGoogleLogin = async () => {
           {/* Google Login */}
           <TouchableOpacity
             onPress={handleGoogleLogin}
+            disabled={loading}
             style={{
               backgroundColor: '#ffffff',
               paddingVertical: 16,
