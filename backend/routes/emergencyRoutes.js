@@ -64,7 +64,6 @@ async function sendReminder(
             .doc(alertId)
             .get();
 
-
         if (
           !alertDoc.exists ||
           alertDoc.data()
@@ -136,7 +135,6 @@ router.post("/trigger", async (req, res) => {
       .collection("users")
       .doc(userId)
       .get();
-    console.log("Victim user exists:", userDoc.exists);
 
     if (!userDoc.exists) {
       return res.status(404).json({
@@ -152,7 +150,18 @@ router.post("/trigger", async (req, res) => {
       .doc(userId)
       .collection("emergencyContacts")
       .get();
+
+    console.log("===== EMERGENCY CONTACT DEBUG =====");
+    console.log("Victim UID:", userId);
     console.log("Emergency contacts count:", contactsSnapshot.size);
+
+    contactsSnapshot.docs.forEach((doc) => {
+      console.log(
+        "CONTACT DOC:",
+        doc.id,
+        JSON.stringify(doc.data(), null, 2)
+      );
+    });
 
     const tokens = [];
     const compatibleDonors = [];
@@ -161,8 +170,41 @@ router.post("/trigger", async (req, res) => {
 
     for (const contactDoc of contactsSnapshot.docs) {
 
-      const contactData = contactDoc.data();
-      console.log("Contact userId:", contactData.contactUserId);
+      const contactData =
+        contactDoc.data();
+
+      console.log("CONTACT USER ID:", contactData.contactUserId);
+
+      if (contactData.contactUserId) {
+        const linkedUserDoc = await db
+          .collection("users")
+          .doc(contactData.contactUserId)
+          .get();
+
+        console.log(
+          "LINKED USER EXISTS:",
+          linkedUserDoc.exists
+        );
+
+        if (linkedUserDoc.exists) {
+          const linkedUserData = linkedUserDoc.data();
+
+          console.log(
+            "LINKED USER DOC ID:",
+            linkedUserDoc.id
+          );
+
+          console.log(
+            "LINKED USER DATA:",
+            JSON.stringify(linkedUserData, null, 2)
+          );
+
+          console.log(
+            "LINKED USER FCM TOKEN:",
+            linkedUserData?.fcmToken
+          );
+        }
+      }
 
       if (
         !contactData.contactUserId
@@ -177,21 +219,27 @@ router.post("/trigger", async (req, res) => {
             contactData.contactUserId
           )
           .get();
-      console.log("Linked user fetched for:", contactData.contactUserId);
 
       if (
         !linkedUserDoc.exists
       ) {
-        console.log("Linked user does not exist:", contactData.contactUserId);
         continue;
       }
 
       const linkedUserData =
         linkedUserDoc.data();
 
-        console.log("Linked user FCM token:", linkedUserData?.fcmToken);
-        if (linkedUserData?.fcmToken) {
-        console.log("Linked user has FCM token:", !!linkedUserData?.fcmToken);
+      console.log("CONTACT LOOKUP DETAILS:", {
+        contactUserId: contactData.contactUserId,
+        linkedUserExists: linkedUserDoc.exists,
+        linkedUserId: linkedUserDoc.id,
+        linkedUserData,
+        fcmToken: linkedUserData?.fcmToken,
+      });
+
+      if (
+        linkedUserData?.fcmToken
+      ) {
 
         tokens.push(
           linkedUserData.fcmToken
@@ -229,8 +277,11 @@ router.post("/trigger", async (req, res) => {
 
     }
 
-      console.log("Tokens count before early return:", tokens.length);
-      if (tokens.length === 0) {
+    console.log("CONTACT LOOKUP RESULTS");
+    console.log("TOKENS ARRAY", tokens);
+    console.log("TOKENS ARRAY:", JSON.stringify(tokens, null, 2));
+
+    if (tokens.length === 0) {
       return res.status(200).json({
         success: true,
         message: "No FCM tokens found for emergency contacts",
