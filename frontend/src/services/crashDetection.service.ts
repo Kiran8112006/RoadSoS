@@ -10,6 +10,27 @@ export const calculateCrashRisk = (
 
   let risk = 0;
 
+  const TEST_SPEED_LOW_KMH =
+    5;
+
+  const TEST_SPEED_HIGH_KMH =
+    15;
+
+  const TEST_ACCEL_LOW =
+    1.4;
+
+  const TEST_ACCEL_MEDIUM =
+    1.8;
+
+  const TEST_ACCEL_HIGH =
+    2.4;
+
+  const TEST_GYRO_LOW =
+    0.8;
+
+  const TEST_GYRO_HIGH =
+    1.4;
+
   const accelForce = Math.sqrt(
 
     (accel?.x || 0) ** 2 +
@@ -34,13 +55,13 @@ export const calculateCrashRisk = (
     SPEED FACTOR
   */
 
-  if (speed > 60) {
+  if (speed > TEST_SPEED_LOW_KMH) {
 
     risk += 20;
 
   }
 
-  if (speed > 100) {
+  if (speed > TEST_SPEED_HIGH_KMH) {
 
     risk += 20;
 
@@ -50,19 +71,19 @@ export const calculateCrashRisk = (
     ACCELEROMETER
   */
 
-  if (accelForce > 3) {
+  if (accelForce > TEST_ACCEL_LOW) {
 
     risk += 20;
 
   }
 
-  if (accelForce > 5) {
+  if (accelForce > TEST_ACCEL_MEDIUM) {
 
     risk += 30;
 
   }
 
-  if (accelForce > 8) {
+  if (accelForce > TEST_ACCEL_HIGH) {
 
     risk += 40;
 
@@ -72,13 +93,13 @@ export const calculateCrashRisk = (
     GYROSCOPE
   */
 
-  if (gyroForce > 2) {
+  if (gyroForce > TEST_GYRO_LOW) {
 
     risk += 20;
 
   }
 
-  if (gyroForce > 4) {
+  if (gyroForce > TEST_GYRO_HIGH) {
 
     risk += 30;
 

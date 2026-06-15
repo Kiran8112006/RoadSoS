@@ -64,6 +64,7 @@ async function sendReminder(
             .doc(alertId)
             .get();
 
+
         if (
           !alertDoc.exists ||
           alertDoc.data()
@@ -135,6 +136,7 @@ router.post("/trigger", async (req, res) => {
       .collection("users")
       .doc(userId)
       .get();
+    console.log("Victim user exists:", userDoc.exists);
 
     if (!userDoc.exists) {
       return res.status(404).json({
@@ -150,6 +152,7 @@ router.post("/trigger", async (req, res) => {
       .doc(userId)
       .collection("emergencyContacts")
       .get();
+    console.log("Emergency contacts count:", contactsSnapshot.size);
 
     const tokens = [];
     const compatibleDonors = [];
@@ -158,8 +161,8 @@ router.post("/trigger", async (req, res) => {
 
     for (const contactDoc of contactsSnapshot.docs) {
 
-      const contactData =
-        contactDoc.data();
+      const contactData = contactDoc.data();
+      console.log("Contact userId:", contactData.contactUserId);
 
       if (
         !contactData.contactUserId
@@ -174,19 +177,21 @@ router.post("/trigger", async (req, res) => {
             contactData.contactUserId
           )
           .get();
+      console.log("Linked user fetched for:", contactData.contactUserId);
 
       if (
         !linkedUserDoc.exists
       ) {
+        console.log("Linked user does not exist:", contactData.contactUserId);
         continue;
       }
 
       const linkedUserData =
         linkedUserDoc.data();
 
-      if (
-        linkedUserData?.fcmToken
-      ) {
+        console.log("Linked user FCM token:", linkedUserData?.fcmToken);
+        if (linkedUserData?.fcmToken) {
+        console.log("Linked user has FCM token:", !!linkedUserData?.fcmToken);
 
         tokens.push(
           linkedUserData.fcmToken
@@ -224,7 +229,8 @@ router.post("/trigger", async (req, res) => {
 
     }
 
-    if (tokens.length === 0) {
+      console.log("Tokens count before early return:", tokens.length);
+      if (tokens.length === 0) {
       return res.status(200).json({
         success: true,
         message: "No FCM tokens found for emergency contacts",

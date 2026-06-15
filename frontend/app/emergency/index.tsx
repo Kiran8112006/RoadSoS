@@ -8,15 +8,47 @@ import {
 import {
   useState,
   useEffect,
+  useRef,
+  useCallback,
 } from 'react';
 
 import {
   router,
+  useLocalSearchParams,
 } from 'expo-router';
 
 import {
   Audio,
 } from 'expo-av';
+
+import {
+  triggerEmergency,
+} from '@/src/services/emergency.service';
+
+import {
+  auth,
+} from '@/src/services/firebase/firebase.config';
+
+import {
+  getCurrentAccurateLocation,
+} from '@/src/services/location.service';
+
+import {
+  showAlertSentNotification,
+} from '@/src/services/localNotification.service';
+
+import {
+  markSafeAndResumeProtection,
+  stopProtectionManager,
+} from '@/src/services/protectionManager.service';
+
+import {
+  clearSuspiciousEvent,
+} from '@/src/services/eventMemory.service';
+
+import {
+  useRideStore,
+} from '@/src/store/ride.store';
 
 export default function EmergencyScreen() {
 
@@ -27,6 +59,16 @@ export default function EmergencyScreen() {
     useState<Audio.Sound | null>(
       null
     );
+
+  const params =
+    useLocalSearchParams();
+
+  const hasSentEmergency =
+    useRef(false);
+
+  const {
+    setProtectionActive,
+  } = useRideStore();
 
   /*
     LOAD ALARM
@@ -76,6 +118,149 @@ export default function EmergencyScreen() {
 
   }, []);
 
+  const stopScreenAlarm =
+  useCallback(async () => {
+
+    Vibration.cancel();
+
+    try {
+
+      if (sound) {
+
+        await sound.stopAsync();
+
+        await sound.unloadAsync();
+
+      }
+
+    }
+
+    catch {
+
+      console.log(
+        'Sound already unloaded'
+      );
+
+    }
+
+  }, [
+    sound
+  ]);
+
+  const getParamNumber =
+  (value: string | string[] | undefined) => {
+
+    const rawValue =
+      Array.isArray(value)
+        ? value[0]
+        : value;
+
+    if (
+      rawValue == null
+    ) {
+      return null;
+    }
+
+    const parsed =
+      Number(rawValue);
+
+    return Number.isFinite(parsed)
+      ? parsed
+      : null;
+
+  };
+
+  const sendEmergencyNow =
+  useCallback(async () => {
+
+    if (
+      hasSentEmergency.current
+    ) {
+      return;
+    }
+
+    hasSentEmergency.current =
+      true;
+
+    await stopScreenAlarm();
+
+    const paramLatitude =
+      getParamNumber(
+        params.latitude
+      );
+
+    const paramLongitude =
+      getParamNumber(
+        params.longitude
+      );
+
+    const emergencyLocation =
+      paramLatitude != null &&
+      paramLongitude != null
+        ? {
+          coords: {
+            latitude:
+              paramLatitude,
+            longitude:
+              paramLongitude,
+          },
+        }
+        : await getCurrentAccurateLocation();
+
+    if (
+      !emergencyLocation?.coords?.latitude ||
+      !emergencyLocation?.coords?.longitude
+    ) {
+
+      console.log(
+        'EMERGENCY LOCATION NOT AVAILABLE'
+      );
+
+      hasSentEmergency.current =
+        false;
+
+      return;
+
+    }
+
+    const response =
+      await triggerEmergency(
+
+        emergencyLocation.coords.latitude,
+
+        emergencyLocation.coords.longitude,
+
+        auth.currentUser?.uid || ''
+
+      );
+
+    if (
+      response?.success
+    ) {
+
+      await showAlertSentNotification();
+
+    }
+
+    await stopProtectionManager();
+
+    clearSuspiciousEvent();
+
+    setProtectionActive(
+      false
+    );
+
+    router.replace(
+      '/protection' as any
+    );
+
+  }, [
+    params.latitude,
+    params.longitude,
+    setProtectionActive,
+    stopScreenAlarm,
+  ]);
+
   /*
     COUNTDOWN
   */
@@ -84,39 +269,7 @@ export default function EmergencyScreen() {
 
     if (seconds <= 0) {
 
-      const sendEmergency =
-        async () => {
-
-          try {
-
-            if (sound) {
-
-              await sound.stopAsync();
-
-              await sound.unloadAsync();
-
-            }
-
-          }
-
-          catch(error) {
-
-            console.log(
-              'Sound already unloaded'
-            );
-
-          }
-
-          router.replace({
-            pathname: '/protection',
-            params: {
-              emergency: 'true',
-            },
-          });
-
-        };
-
-      sendEmergency();
+      sendEmergencyNow();
 
       return;
 
@@ -145,7 +298,7 @@ export default function EmergencyScreen() {
 
     seconds,
 
-    sound
+    sendEmergencyNow
 
   ]);
 
@@ -156,29 +309,38 @@ export default function EmergencyScreen() {
   const handleSafe =
     async () => {
 
-      Vibration.cancel();
+      await stopScreenAlarm();
 
-      try {
+      await markSafeAndResumeProtection();
 
-        if (sound) {
+      clearSuspiciousEvent();
 
-          await sound.stopAsync();
+      setProtectionActive(
+        true
+      );
 
-          await sound.unloadAsync();
+      router.replace(
+        '/protection' as any
+      );
 
-        }
+    };
 
-      }
+  const handleStopProtection =
+    async () => {
 
-      catch(error) {
+      await stopScreenAlarm();
 
-        console.log(
-          'Sound already unloaded'
-        );
+      await stopProtectionManager();
 
-      }
+      clearSuspiciousEvent();
 
-      router.back();
+      setProtectionActive(
+        false
+      );
+
+      router.replace(
+        '/protection' as any
+      );
 
     };
 
@@ -253,6 +415,74 @@ export default function EmergencyScreen() {
           }}
         >
           I AM SAFE
+        </Text>
+
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={
+          sendEmergencyNow
+        }
+        style={{
+          marginTop: 16,
+
+          backgroundColor:
+            '#111111',
+
+          padding: 20,
+
+          borderRadius:
+            20,
+        }}
+      >
+
+        <Text
+          style={{
+            color:
+              'white',
+
+            fontWeight:
+              'bold',
+
+            fontSize: 18,
+          }}
+        >
+          GET HELP
+        </Text>
+
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={
+          handleStopProtection
+        }
+        style={{
+          marginTop: 16,
+
+          borderColor:
+            'white',
+
+          borderWidth: 2,
+
+          padding: 18,
+
+          borderRadius:
+            20,
+        }}
+      >
+
+        <Text
+          style={{
+            color:
+              'white',
+
+            fontWeight:
+              'bold',
+
+            fontSize: 18,
+          }}
+        >
+          STOP PROTECTION
         </Text>
 
       </TouchableOpacity>

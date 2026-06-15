@@ -1,5 +1,6 @@
 import {
   Stack,
+  router,
 } from 'expo-router';
 
 import {
@@ -19,6 +20,10 @@ import {
   createEmergencyChannel,
 } from '../src/services/fcm.service';
 
+import {
+  subscribeToNativeCrashConfirmed,
+} from '../src/services/protectionManager.service';
+
 export default function RootLayout() {
 
   useEffect(() => {
@@ -35,7 +40,33 @@ export default function RootLayout() {
 
     handleInitialNotification();
 
-    return unsubscribe;
+    const unsubscribeNativeCrash =
+      subscribeToNativeCrashConfirmed(
+        (event) => {
+
+          router.push({
+            pathname: '/emergency',
+            params: {
+              nativeCrash: 'true',
+              latitude:
+                event.latitude?.toString(),
+              longitude:
+                event.longitude?.toString(),
+              confidence:
+                event.confidence?.toString(),
+            },
+          });
+
+        }
+      );
+
+    return () => {
+
+      unsubscribe();
+
+      unsubscribeNativeCrash();
+
+    };
 
   }, []);
 

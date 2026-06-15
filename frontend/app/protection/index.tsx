@@ -88,6 +88,8 @@ import {
 
   getSuspiciousEvent,
 
+  clearSuspiciousEvent,
+
 } from '../../src/services/eventMemory.service';
 
 import {
@@ -155,17 +157,33 @@ export default function ProtectionScreen() {
 
   useEffect(() => {
 
-    startSensors(
+    if (isProtectionActive) {
 
-      setAccel,
+      startSensors(
 
-      setGyro
+        setAccel,
 
-    );
+        setGyro
 
-    startLocationTracking(
-      setLocation
-    );
+      );
+
+      startLocationTracking(
+        setLocation
+      );
+
+    } else {
+
+      stopSensors();
+
+      stopLocationTracking();
+
+      setAccel(null);
+
+      setGyro(null);
+
+      setLocation(null);
+
+    }
 
     return () => {
 
@@ -175,13 +193,23 @@ export default function ProtectionScreen() {
 
     };
 
-  }, []);
+  }, [isProtectionActive]);
 
   /*
     MAIN DETECTION ENGINE
   */
 
   useEffect(() => {
+
+    if (!isProtectionActive) {
+      setRiskScore(0);
+      setDeceleration(0);
+      setEvent(null);
+      setIsInactive(false);
+      setIsCrashConfirmed(false);
+      clearSuspiciousEvent();
+      return;
+    }
 
     const speed =
       (
@@ -301,7 +329,9 @@ export default function ProtectionScreen() {
 
     gyro,
 
-    location
+    location,
+
+    isProtectionActive
 
   ]);
 
@@ -480,20 +510,9 @@ useEffect(() => {
 
       <TouchableOpacity
         onPress={() => {
-
-          createSuspiciousEvent({
-            risk: 100,
-            decel: 100,
-            speed: 80,
-          });
-
-          setEvent(
-            getSuspiciousEvent()
-          );
-
-          setIsInactive(true);
-
-        }}
+        // Directly confirm crash for end‑to‑end testing
+        setIsCrashConfirmed(true);
+      }}
         style={{
           backgroundColor: 'red',
           padding: 15,

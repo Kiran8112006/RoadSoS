@@ -10,14 +10,11 @@ export const confirmCrash = (
 
 ) => {
 
-  const highRisk =
-    risk > 20;
-
   return (
 
-    highRisk &&
+    hasEvent &&
 
-    hasEvent
+    inactive
 
   );
 

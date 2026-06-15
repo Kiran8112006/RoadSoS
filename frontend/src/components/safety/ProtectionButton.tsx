@@ -1,11 +1,17 @@
 import {
   TouchableOpacity,
   Text,
+  Alert,
 } from 'react-native';
 
 import {
   useRideStore,
 } from '../../store/ride.store';
+
+import {
+  startProtectionManager,
+  stopProtectionManager,
+} from '../../services/protectionManager.service';
 
 export default function ProtectionButton() {
 
@@ -14,11 +20,45 @@ export default function ProtectionButton() {
     setProtectionActive,
   } = useRideStore();
 
-  const handleToggle = () => {
+  const handleToggle =
+  async () => {
 
-    setProtectionActive(
-      !isProtectionActive
-    );
+    const nextValue =
+      !isProtectionActive;
+
+    try {
+
+      if (
+        nextValue
+      ) {
+
+        await startProtectionManager();
+
+      } else {
+
+        await stopProtectionManager();
+
+      }
+
+      setProtectionActive(
+        nextValue
+      );
+
+    } catch (error) {
+
+      console.log(
+        'PROTECTION TOGGLE ERROR:',
+        error
+      );
+
+      Alert.alert(
+        'Protection unavailable',
+        error instanceof Error
+          ? error.message
+          : 'RoadSoS could not start background protection.'
+      );
+
+    }
 
   };
 
